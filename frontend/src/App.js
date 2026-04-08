@@ -6,7 +6,8 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import SetupPIN from './pages/SetupPIN';
 import ForgotPassword from './pages/ForgotPassword';
-import Dashboard from './pages/Dashboard';
+import DashboardV2 from './pages/DashboardV2';
+import Profile from './pages/Profile';
 import Transactions from './pages/Transactions';
 import Referrals from './pages/Referrals';
 import AdminPanel from './pages/AdminPanel';
@@ -34,7 +35,15 @@ function App() {
             path="/dashboard"
             element={
               <ProtectedRoute>
-                <Dashboard />
+                <DashboardV2 />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute>
+                <Profile />
               </ProtectedRoute>
             }
           />

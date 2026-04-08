@@ -591,6 +591,63 @@ async def get_referral_stats(request: Request):
         "referral_code": user_doc.get("referral_code", "")
     }
 
+@api_router.get("/profile")
+async def get_profile(request: Request):
+    user = await get_current_user(request)
+    user_doc = await db.users.find_one({"_id": ObjectId(user["_id"])})
+    
+    return {
+        "name": user_doc.get("name", ""),
+        "mobile": user_doc.get("mobile", ""),
+        "email": user_doc.get("email"),
+        "address": user_doc.get("address"),
+        "nominee_name": user_doc.get("nominee_name"),
+        "nominee_relation": user_doc.get("nominee_relation"),
+        "nominee_mobile": user_doc.get("nominee_mobile"),
+        "kyc_aadhaar": user_doc.get("kyc_aadhaar"),
+        "kyc_pan": user_doc.get("kyc_pan")
+    }
+
+@api_router.put("/profile")
+async def update_profile(request: Request):
+    user = await get_current_user(request)
+    body = await request.json()
+    
+    update_fields = {}
+    if "name" in body:
+        update_fields["name"] = body["name"]
+    if "email" in body:
+        update_fields["email"] = body["email"]
+    if "address" in body:
+        update_fields["address"] = body["address"]
+    if "nominee_name" in body:
+        update_fields["nominee_name"] = body["nominee_name"]
+    if "nominee_relation" in body:
+        update_fields["nominee_relation"] = body["nominee_relation"]
+    if "nominee_mobile" in body:
+        update_fields["nominee_mobile"] = body["nominee_mobile"]
+    
+    await db.users.update_one(
+        {"_id": ObjectId(user["_id"])},
+        {"$set": update_fields}
+    )
+    
+    return {"message": "Profile updated successfully"}
+
+@api_router.post("/profile/upload-kyc")
+async def upload_kyc(request: Request):
+    user = await get_current_user(request)
+    form = await request.form()
+    file_type = form.get("type")
+    
+    field_name = f"kyc_{file_type}"
+    await db.users.update_one(
+        {"_id": ObjectId(user["_id"])},
+        {"$set": {field_name: f"uploaded_{file_type}_{datetime.now(timezone.utc).isoformat()}"}}
+    )
+    
+    return {"message": f"{file_type} uploaded successfully"}
+
 @api_router.get("/admin/dashboard")
 async def admin_dashboard(request: Request):
     admin = await get_admin_user(request)
