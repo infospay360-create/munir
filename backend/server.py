@@ -379,6 +379,41 @@ async def get_balance(request: Request):
         "today_income": user_doc.get("today_income", 0.0)
     }
 
+@api_router.get("/dashboard/stats")
+async def get_dashboard_stats(request: Request):
+    user = await get_current_user(request)
+    user_doc = await db.users.find_one({"_id": ObjectId(user["_id"])})
+    
+    today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    
+    today_joining = await db.users.count_documents({
+        "referred_by": user["_id"],
+        "created_at": {"$gte": today_start}
+    })
+    
+    total_active_users = await db.users.count_documents({
+        "referred_by": user["_id"],
+        "status": {"$ne": "inactive"}
+    })
+    
+    total_free_users = await db.users.count_documents({
+        "referred_by": user["_id"],
+        "subscription_type": "free"
+    })
+    
+    return {
+        "main_wallet": user_doc.get("main_wallet", 0.0),
+        "e_wallet": user_doc.get("e_wallet", 0.0),
+        "coins": user_doc.get("coins", 0),
+        "total_income": user_doc.get("total_income", 0.0),
+        "today_income": user_doc.get("today_income", 0.0),
+        "today_repurchase_income": user_doc.get("today_repurchase_income", 0.0),
+        "total_repurchase_income": user_doc.get("total_repurchase_income", 0.0),
+        "today_joining": today_joining,
+        "total_active_users": total_active_users,
+        "total_free_users": total_free_users
+    }
+
 @api_router.post("/wallet/self-transfer")
 async def self_transfer(req: SelfTransferRequest, request: Request):
     user = await get_current_user(request)

@@ -8,6 +8,9 @@ import SetupPIN from './pages/SetupPIN';
 import ForgotPassword from './pages/ForgotPassword';
 import DashboardV2 from './pages/DashboardV2';
 import Profile from './pages/Profile';
+import Recharge from './pages/Recharge';
+import WalletPage from './pages/WalletPage';
+import AddFund from './pages/AddFund';
 import Transactions from './pages/Transactions';
 import Referrals from './pages/Referrals';
 import AdminPanel from './pages/AdminPanel';
@@ -44,6 +47,30 @@ function App() {
             element={
               <ProtectedRoute>
                 <Profile />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/recharge"
+            element={
+              <ProtectedRoute>
+                <Recharge />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/wallet"
+            element={
+              <ProtectedRoute>
+                <WalletPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/add-fund"
+            element={
+              <ProtectedRoute>
+                <AddFund />
               </ProtectedRoute>
             }
           />
