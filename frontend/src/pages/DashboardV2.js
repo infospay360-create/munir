@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Card } from '@/components/ui/card';
-import { List, Wallet, CurrencyCircleDollar, TrendUp, DeviceMobileCamera, ArrowsLeftRight, ClockCounterClockwise, UsersThree, Plus, SignOut, User, UserPlus, UserCheck, UserCircle, ChartLineUp } from '@phosphor-icons/react';
+import { List, Wallet, CurrencyCircleDollar, TrendUp, DeviceMobileCamera, ArrowsLeftRight, ClockCounterClockwise, UsersThree, Plus, SignOut, User, UserPlus, UserCheck, UserCircle, ChartLineUp, ShoppingBag } from '@phosphor-icons/react';
 import { motion } from 'framer-motion';
 import axios from 'axios';
 
@@ -34,6 +34,7 @@ const DashboardV2 = () => {
   const menuItems = [
     { icon: User, label: 'Profile', path: '/profile', testId: 'menu-profile' },
     { icon: DeviceMobileCamera, label: 'Recharge', path: '/recharge', testId: 'menu-recharge' },
+    { icon: ShoppingBag, label: 'Shopping', path: '/shopping', testId: 'menu-shopping' },
     { icon: Wallet, label: 'Wallet', path: '/wallet', testId: 'menu-wallet' },
     { icon: ClockCounterClockwise, label: 'Transaction History', path: '/transactions', testId: 'menu-transactions' },
     { icon: UsersThree, label: 'Referral / Network', path: '/referrals', testId: 'menu-referrals' },

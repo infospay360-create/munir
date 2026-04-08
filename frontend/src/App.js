@@ -8,6 +8,7 @@ import SetupPIN from './pages/SetupPIN';
 import ForgotPassword from './pages/ForgotPassword';
 import DashboardV2 from './pages/DashboardV2';
 import Profile from './pages/Profile';
+import Shopping from './pages/Shopping';
 import Recharge from './pages/Recharge';
 import WalletPage from './pages/WalletPage';
 import AddFund from './pages/AddFund';
@@ -47,6 +48,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <Profile />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/shopping"
+            element={
+              <ProtectedRoute>
+                <Shopping />
               </ProtectedRoute>
             }
           />

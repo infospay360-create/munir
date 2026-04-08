@@ -74,7 +74,7 @@ const Login = () => {
                     placeholder="Enter 10-digit mobile"
                     value={mobile}
                     onChange={handleMobileChange}
-                    className="pl-11 border-slate-300 rounded-xl h-12 focus:ring-emerald-500/30 focus:border-emerald-500 transition-all"
+                    className="pl-11 border-2 border-purple-600 rounded-xl h-12 focus:ring-purple-500/30 focus:border-purple-700 transition-all"
                     required
                     maxLength={10}
                     data-testid="login-mobile-input"
@@ -96,7 +96,7 @@ const Login = () => {
                     placeholder="Enter password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="pl-11 pr-11 border-slate-300 rounded-xl h-12 focus:ring-emerald-500/30 focus:border-emerald-500 transition-all"
+                    className="pl-11 pr-11 border-2 border-purple-600 rounded-xl h-12 focus:ring-purple-500/30 focus:border-purple-700 transition-all"
                     required
                     data-testid="login-password-input"
                   />

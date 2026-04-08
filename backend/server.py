@@ -177,6 +177,13 @@ class UserResponse(BaseModel):
     completed_cycles: int
     created_at: str
 
+@api_router.get("/check-referral/{code}")
+async def check_referral(code: str):
+    user = await db.users.find_one({"referral_code": code})
+    if user:
+        return {"exists": True, "name": user.get("name", "Unknown")}
+    return {"exists": False, "name": None}
+
 @api_router.post("/auth/register")
 async def register(req: RegisterRequest, response: Response):
     existing = await db.users.find_one({"mobile": req.mobile})
@@ -961,3 +968,85 @@ logger = logging.getLogger(__name__)
 @app.on_event("shutdown")
 async def shutdown_db_client():
     client.close()
+
+class ProductRequest(BaseModel):
+    name: str
+    description: str
+    price: float
+    category: str
+    stock: int
+    image_url: Optional[str] = None
+
+class AddToCartRequest(BaseModel):
+    product_id: str
+    quantity: int
+
+@api_router.get("/vendor/status")
+async def get_vendor_status(request: Request):
+    user = await get_current_user(request)
+    user_doc = await db.users.find_one({"_id": ObjectId(user["_id"])})
+    return {"is_vendor": user_doc.get("is_vendor", False)}
+
+@api_router.post("/vendor/register")
+async def register_vendor(request: Request):
+    user = await get_current_user(request)
+    await db.users.update_one(
+        {"_id": ObjectId(user["_id"])},
+        {"$set": {"is_vendor": True}}
+    )
+    return {"message": "You are now a vendor"}
+
+@api_router.get("/products")
+async def get_products(request: Request):
+    try:
+        await get_current_user(request)
+    except:
+        pass
+    
+    products = await db.products.find({}, {"_id": 0}).to_list(1000)
+    return {"products": products}
+
+@api_router.post("/products")
+async def add_product(req: ProductRequest, request: Request):
+    user = await get_current_user(request)
+    user_doc = await db.users.find_one({"_id": ObjectId(user["_id"])})
+    
+    if not user_doc.get("is_vendor"):
+        raise HTTPException(status_code=403, detail="Only vendors can add products")
+    
+    product = {
+        "name": req.name,
+        "description": req.description,
+        "price": req.price,
+        "category": req.category,
+        "stock": req.stock,
+        "image_url": req.image_url,
+        "vendor_id": user["_id"],
+        "vendor_name": user_doc.get("name", "Unknown"),
+        "created_at": datetime.now(timezone.utc)
+    }
+    
+    await db.products.insert_one(product)
+    return {"message": "Product added successfully"}
+
+@api_router.post("/cart/add")
+async def add_to_cart(req: AddToCartRequest, request: Request):
+    user = await get_current_user(request)
+    
+    cart_item = {
+        "user_id": user["_id"],
+        "product_id": req.product_id,
+        "quantity": req.quantity,
+        "added_at": datetime.now(timezone.utc)
+    }
+    
+    existing = await db.cart.find_one({"user_id": user["_id"], "product_id": req.product_id})
+    if existing:
+        await db.cart.update_one(
+            {"_id": existing["_id"]},
+            {"$inc": {"quantity": req.quantity}}
+        )
+    else:
+        await db.cart.insert_one(cart_item)
+    
+    return {"message": "Added to cart"}

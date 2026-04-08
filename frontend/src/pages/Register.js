@@ -5,118 +5,228 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { User, Phone, Lock, Ticket } from '@phosphor-icons/react';
+import { User, Phone, Lock, Ticket, Eye, EyeSlash, CheckCircle } from '@phosphor-icons/react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
+import axios from 'axios';
+
+const API_URL = process.env.REACT_APP_BACKEND_URL;
 
 const Register = () => {
   const [name, setName] = useState('');
   const [mobile, setMobile] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [referralCode, setReferralCode] = useState('');
+  const [referrerName, setReferrerName] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { register } = useAuth();
   const navigate = useNavigate();
 
+  const handleMobileChange = (e) => {
+    const value = e.target.value.replace(/\D/g, '').slice(0, 10);
+    setMobile(value);
+  };
+
+  const handleReferralCodeChange = async (e) => {
+    const code = e.target.value.toUpperCase();
+    setReferralCode(code);
+    
+    if (code.length >= 6) {
+      try {
+        const { data } = await axios.get(`${API_URL}/api/check-referral/${code}`);
+        if (data.exists) {
+          setReferrerName(data.name);
+          toast.success(`Referrer: ${data.name}`);
+        } else {
+          setReferrerName('');
+        }
+      } catch (error) {
+        setReferrerName('');
+      }
+    } else {
+      setReferrerName('');
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    if (mobile.length !== 10) {
+      toast.error('Mobile number must be exactly 10 digits');
+      return;
+    }
+    
+    if (password !== confirmPassword) {
+      toast.error('Passwords do not match');
+      return;
+    }
+    
+    if (password.length < 6) {
+      toast.error('Password must be at least 6 characters');
+      return;
+    }
+    
     setIsLoading(true);
     const result = await register(name, mobile, password, referralCode || null);
     setIsLoading(false);
     
     if (result.success) {
       toast.success('Registration successful!');
-      navigate('/setup-pin');
+      navigate('/dashboard');
     } else {
       toast.error(result.error);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-emerald-50 to-slate-100 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-fuchsia-50 flex items-center justify-center p-4">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
         className="w-full max-w-md"
       >
-        <Card className="border-slate-200 shadow-xl" data-testid="register-card">
-          <CardHeader className="space-y-1 text-center">
-            <CardTitle className="text-3xl font-bold text-slate-900" style={{ fontFamily: 'Outfit, sans-serif' }}>
+        <Card className="border-purple-200 shadow-2xl backdrop-blur-sm bg-white/95" data-testid="register-card">
+          <CardHeader className="space-y-1 text-center pb-6">
+            <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-purple-600 to-fuchsia-600 flex items-center justify-center shadow-lg">
+              <User size={40} weight="duotone" className="text-white" />
+            </div>
+            <CardTitle className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-fuchsia-600 bg-clip-text text-transparent" style={{ fontFamily: 'Outfit, sans-serif' }}>
               Create Account
             </CardTitle>
-            <CardDescription className="text-slate-600">
-              Join our recharge & MLM platform
+            <CardDescription className="text-slate-600 text-base">
+              Join our platform and start earning
             </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Referral Code at Top */}
               <div className="space-y-2">
-                <Label htmlFor="name" className="text-slate-700 font-medium">Full Name</Label>
+                <Label htmlFor="referralCode" className="text-slate-700 font-semibold">Referral Code (Optional)</Label>
                 <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={20} weight="duotone" />
-                  <Input
-                    id="name"
-                    type="text"
-                    placeholder="Enter your name"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="pl-11 border-slate-300 rounded-xl h-12 focus:ring-emerald-500/20 focus:border-emerald-500"
-                    required
-                    data-testid="register-name-input"
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="mobile" className="text-slate-700 font-medium">Mobile Number</Label>
-                <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={20} weight="duotone" />
-                  <Input
-                    id="mobile"
-                    type="tel"
-                    placeholder="Enter 10-digit mobile"
-                    value={mobile}
-                    onChange={(e) => setMobile(e.target.value)}
-                    className="pl-11 border-slate-300 rounded-xl h-12 focus:ring-emerald-500/20 focus:border-emerald-500"
-                    required
-                    data-testid="register-mobile-input"
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="password" className="text-slate-700 font-medium">Password</Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={20} weight="duotone" />
-                  <Input
-                    id="password"
-                    type="password"
-                    placeholder="Create password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="pl-11 border-slate-300 rounded-xl h-12 focus:ring-emerald-500/20 focus:border-emerald-500"
-                    required
-                    data-testid="register-password-input"
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="referralCode" className="text-slate-700 font-medium">Referral Code (Optional)</Label>
-                <div className="relative">
-                  <Ticket className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={20} weight="duotone" />
+                  <Ticket className="absolute left-3 top-1/2 -translate-y-1/2 text-purple-500" size={20} weight="duotone" />
                   <Input
                     id="referralCode"
                     type="text"
                     placeholder="Enter referral code"
                     value={referralCode}
-                    onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
-                    className="pl-11 border-slate-300 rounded-xl h-12 focus:ring-emerald-500/20 focus:border-emerald-500"
+                    onChange={handleReferralCodeChange}
+                    className="pl-11 border-2 border-purple-600 rounded-xl h-12 focus:ring-purple-500/30 focus:border-purple-700 transition-all"
                     data-testid="register-referral-input"
+                  />
+                  {referrerName && (
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 text-emerald-600">
+                      <CheckCircle size={16} weight="fill" />
+                      <span className="text-xs font-medium">{referrerName}</span>
+                    </div>
+                  )}
+                </div>
+                {referrerName && (
+                  <p className="text-xs text-emerald-600 font-medium">✓ Referred by: {referrerName}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="name" className="text-slate-700 font-semibold">Full Name</Label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 text-purple-500" size={20} weight="duotone" />
+                  <Input
+                    id="name"
+                    type="text"
+                    placeholder="Enter your full name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="pl-11 border-2 border-purple-600 rounded-xl h-12 focus:ring-purple-500/30 focus:border-purple-700 transition-all"
+                    required
+                    data-testid="register-name-input"
                   />
                 </div>
               </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="mobile" className="text-slate-700 font-semibold">Mobile Number</Label>
+                <div className="relative">
+                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-purple-500" size={20} weight="duotone" />
+                  <Input
+                    id="mobile"
+                    type="tel"
+                    placeholder="Enter 10-digit mobile"
+                    value={mobile}
+                    onChange={handleMobileChange}
+                    className="pl-11 border-2 border-purple-600 rounded-xl h-12 focus:ring-purple-500/30 focus:border-purple-700 transition-all"
+                    required
+                    maxLength={10}
+                    data-testid="register-mobile-input"
+                  />
+                  {mobile.length > 0 && (
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-purple-500">
+                      {mobile.length}/10
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="password" className="text-slate-700 font-semibold">Password</Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-purple-500" size={20} weight="duotone" />
+                  <Input
+                    id="password"
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="Create password (min 6 characters)"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="pl-11 pr-11 border-2 border-purple-600 rounded-xl h-12 focus:ring-purple-500/30 focus:border-purple-700 transition-all"
+                    required
+                    data-testid="register-password-input"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-purple-500 hover:text-purple-700 transition-colors"
+                    data-testid="toggle-password-btn"
+                  >
+                    {showPassword ? <EyeSlash size={20} weight="duotone" /> : <Eye size={20} weight="duotone" />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword" className="text-slate-700 font-semibold">Confirm Password</Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-purple-500" size={20} weight="duotone" />
+                  <Input
+                    id="confirmPassword"
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    placeholder="Re-enter password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="pl-11 pr-11 border-2 border-purple-600 rounded-xl h-12 focus:ring-purple-500/30 focus:border-purple-700 transition-all"
+                    required
+                    data-testid="register-confirm-password-input"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-purple-500 hover:text-purple-700 transition-colors"
+                    data-testid="toggle-confirm-password-btn"
+                  >
+                    {showConfirmPassword ? <EyeSlash size={20} weight="duotone" /> : <Eye size={20} weight="duotone" />}
+                  </button>
+                </div>
+                {confirmPassword && (
+                  <p className={`text-xs font-medium ${password === confirmPassword ? 'text-emerald-600' : 'text-red-600'}`}>
+                    {password === confirmPassword ? '✓ Passwords match' : '✗ Passwords do not match'}
+                  </p>
+                )}
+              </div>
+
               <Button
                 type="submit"
-                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl h-12 font-semibold shadow-sm transition-all"
+                className="w-full bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:from-purple-700 hover:to-fuchsia-700 text-white rounded-xl h-12 font-semibold shadow-lg transition-all hover:scale-[1.02]"
                 disabled={isLoading}
                 data-testid="register-submit-btn"
               >
@@ -125,7 +235,7 @@ const Register = () => {
             </form>
             <div className="mt-6 text-center text-sm text-slate-600">
               Already have an account?{' '}
-              <Link to="/login" className="text-emerald-600 hover:text-emerald-700 font-semibold" data-testid="login-link">
+              <Link to="/login" className="text-purple-600 hover:text-purple-700 font-bold" data-testid="login-link">
                 Login
               </Link>
             </div>
