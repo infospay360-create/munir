@@ -1054,3 +1054,40 @@ async def add_to_cart(req: AddToCartRequest, request: Request):
         await db.cart.insert_one(cart_item)
     
     return {"message": "Added to cart"}
+
+class BannerRequest(BaseModel):
+    text: str
+    color: str
+    image_url: Optional[str] = None
+
+@api_router.get("/banner")
+async def get_banner():
+    banner = await db.settings.find_one({"type": "banner"})
+    if not banner:
+        default_banner = {
+            "type": "banner",
+            "text": "💰 Earn Smart · 🚀 Grow Fast · 🏆 Achieve More",
+            "color": "from-purple-600 via-pink-600 to-rose-600",
+            "image_url": None
+        }
+        await db.settings.insert_one(default_banner)
+        banner = default_banner
+    
+    banner.pop("_id", None)
+    return banner
+
+@api_router.post("/admin/banner")
+async def update_banner(req: BannerRequest, request: Request):
+    admin = await get_admin_user(request)
+    
+    await db.settings.update_one(
+        {"type": "banner"},
+        {"$set": {
+            "text": req.text,
+            "color": req.color,
+            "image_url": req.image_url
+        }},
+        upsert=True
+    )
+    
+    return {"message": "Banner updated"}

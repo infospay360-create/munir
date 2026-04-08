@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Card } from '@/components/ui/card';
-import { List, Wallet, CurrencyCircleDollar, TrendUp, DeviceMobileCamera, ArrowsLeftRight, ClockCounterClockwise, UsersThree, Plus, SignOut, User, UserPlus, UserCheck, UserCircle, ChartLineUp, ShoppingBag } from '@phosphor-icons/react';
+import { List, Wallet, CurrencyCircleDollar, TrendUp, DeviceMobileCamera, ArrowsLeftRight, ClockCounterClockwise, UsersThree, Plus, SignOut, User, UserPlus, UserCheck, UserCircle, ChartLineUp, ShoppingBag, Coins } from '@phosphor-icons/react';
 import { motion } from 'framer-motion';
 import axios from 'axios';
 
@@ -145,7 +145,35 @@ const DashboardV2 = () => {
 
       {/* Dashboard Cards - Comprehensive Stats */}
       <div className="p-4 pb-8">
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 max-w-6xl mx-auto">
+        {/* Available Coins Card at Top */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="max-w-6xl mx-auto mb-4"
+        >
+          <Card className="bg-gradient-to-r from-amber-400 via-yellow-500 to-orange-500 text-white border-0 p-6 rounded-2xl shadow-2xl" data-testid="available-coins-card">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                  <Coins size={32} weight="duotone" />
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-wider text-amber-100 mb-1">Available Coins</p>
+                  <p className="text-4xl font-bold" style={{ fontFamily: 'Outfit, sans-serif' }}>
+                    {dashboardData.coins}
+                  </p>
+                  <p className="text-sm text-amber-100 mt-1">Use for recharge & shopping</p>
+                </div>
+              </div>
+              <div className="hidden md:block text-right">
+                <p className="text-sm text-amber-100">Main Wallet Balance</p>
+                <p className="text-2xl font-bold">₹{dashboardData.main_wallet.toFixed(2)}</p>
+              </div>
+            </div>
+          </Card>
+        </motion.div>
+
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 max-w-6xl mx-auto">
           {/* Total Balance */}
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
@@ -331,6 +359,27 @@ const DashboardV2 = () => {
               <p className="text-xs uppercase tracking-wider text-amber-100 mb-1">Free Users</p>
               <p className="text-2xl font-bold" style={{ fontFamily: 'Outfit, sans-serif' }}>
                 {dashboardData.total_free_users}
+              </p>
+            </Card>
+          </motion.div>
+
+          {/* Total Coins */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.55 }}
+            whileHover={{ scale: 1.02 }}
+          >
+            <Card className="bg-gradient-to-br from-yellow-400 via-amber-400 to-yellow-500 text-white border-0 p-4 rounded-2xl shadow-xl hover:shadow-2xl transition-all" data-testid="total-coins-card">
+              <div className="flex items-center justify-between mb-2">
+                <div className="w-10 h-10 rounded-xl bg-white/10 backdrop-blur-sm flex items-center justify-center">
+                  <Coins size={20} weight="duotone" />
+                </div>
+                <div className="w-2 h-2 rounded-full bg-yellow-200 animate-pulse"></div>
+              </div>
+              <p className="text-xs uppercase tracking-wider text-yellow-100 mb-1">Total Coins</p>
+              <p className="text-2xl font-bold" style={{ fontFamily: 'Outfit, sans-serif' }}>
+                {dashboardData.coins}
               </p>
             </Card>
           </motion.div>
