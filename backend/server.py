@@ -581,7 +581,7 @@ async def recharge(req: RechargeRequest, request: Request):
     return {"message": "Recharge initiated", "status": status, "recharge_id": str(result.inserted_id)}
 
 @api_router.get("/transactions")
-async def get_transactions(request: Request, type: Optional[str] = None, from_date: Optional[str] = None, to_date: Optional[str] = None):
+async def get_transactions(request: Request, type: Optional[str] = None, from_date: Optional[str] = None, to_date: Optional[str] = None, skip: int = 0, limit: int = 100):
     user = await get_current_user(request)
     
     query = {"user_id": user["_id"]}
@@ -595,7 +595,7 @@ async def get_transactions(request: Request, type: Optional[str] = None, from_da
         else:
             query["created_at"] = {"$lte": datetime.fromisoformat(to_date)}
     
-    transactions = await db.transactions.find(query, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    transactions = await db.transactions.find(query, {"_id": 0}).sort("created_at", -1).skip(skip).limit(min(limit, 500)).to_list(None)
     
     for txn in transactions:
         if isinstance(txn.get("created_at"), datetime):
@@ -997,13 +997,17 @@ async def register_vendor(request: Request):
     return {"message": "You are now a vendor"}
 
 @api_router.get("/products")
-async def get_products(request: Request):
+async def get_products(request: Request, skip: int = 0, limit: int = 50, category: Optional[str] = None):
     try:
         await get_current_user(request)
     except:
         pass
     
-    products = await db.products.find({}, {"_id": 0}).to_list(1000)
+    query = {}
+    if category:
+        query["category"] = category
+    
+    products = await db.products.find(query, {"_id": 0}).skip(skip).limit(min(limit, 100)).to_list(None)
     return {"products": products}
 
 @api_router.post("/products")
