@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, Users, CurrencyCircleDollar, Lightning, Gear, Plus, Check, X } from '@phosphor-icons/react';
+import { ArrowLeft, Users, CurrencyCircleDollar, Lightning, Gear, Plus, Check, X, UploadSimple, Image } from '@phosphor-icons/react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import axios from 'axios';
@@ -30,6 +30,7 @@ const AdminPanel = () => {
   const [newImageUrl, setNewImageUrl] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [bannerSubTab, setBannerSubTab] = useState('text');
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     fetchDashboardData();
@@ -167,6 +168,36 @@ const AdminPanel = () => {
     if (newImageUrl.trim()) {
       setBannerImages([...bannerImages, newImageUrl.trim()]);
       setNewImageUrl('');
+    }
+  };
+
+  const handleFileUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error('Sirf image files allowed hain');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('File 5MB se chhoti honi chahiye');
+      return;
+    }
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const { data } = await axios.post(`${API_URL}/api/admin/banner/upload`, formData, {
+        withCredentials: true,
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      const fullUrl = `${API_URL}${data.url}`;
+      setBannerImages([...bannerImages, fullUrl]);
+      toast.success('Image uploaded!');
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Upload failed');
+    } finally {
+      setUploading(false);
+      e.target.value = '';
     }
   };
 
@@ -528,7 +559,7 @@ const AdminPanel = () => {
             {bannerSubTab === 'image' && (
               <Card className="border-slate-200 rounded-2xl p-6" data-testid="image-banner-card">
                 <h3 className="text-xl font-bold text-slate-900 mb-2">Image Banner / Slider</h3>
-                <p className="text-sm text-slate-600 mb-6">Dashboard pe image slider banner dikhega</p>
+                <p className="text-sm text-slate-600 mb-6">Dashboard pe image slider banner dikhega. Direct image file upload karein.</p>
 
                 {/* Image Preview */}
                 {bannerImages.length > 0 && (
@@ -545,37 +576,66 @@ const AdminPanel = () => {
                   </div>
                 )}
 
-                {/* Add Image URL */}
                 <div className="space-y-4">
+                  {/* File Upload - Primary */}
                   <div className="space-y-2">
-                    <Label>Add Image URL</Label>
+                    <Label className="text-sm font-semibold">Upload Image File</Label>
+                    <div className="flex gap-2 items-center">
+                      <label className="flex-1 cursor-pointer">
+                        <div className="flex items-center justify-center gap-3 border-2 border-dashed border-purple-400 rounded-xl h-14 bg-purple-50 hover:bg-purple-100 transition-colors">
+                          <UploadSimple size={22} className="text-purple-600" />
+                          <span className="text-sm font-medium text-purple-700">
+                            {uploading ? 'Uploading...' : 'Click to Upload Image (JPG, PNG, WebP)'}
+                          </span>
+                        </div>
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/gif,image/webp"
+                          className="hidden"
+                          onChange={handleFileUpload}
+                          disabled={uploading}
+                          data-testid="file-upload-input"
+                        />
+                      </label>
+                    </div>
+                    <p className="text-xs text-slate-500">Max 5MB. Supported: JPG, PNG, GIF, WebP</p>
+                  </div>
+
+                  {/* OR URL Input - Secondary */}
+                  <div className="relative py-2">
+                    <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-200"></div></div>
+                    <div className="relative flex justify-center"><span className="bg-white px-3 text-xs text-slate-400">OR paste direct image URL</span></div>
+                  </div>
+
+                  <div className="space-y-2">
                     <div className="flex gap-2">
                       <Input
                         value={newImageUrl}
                         onChange={(e) => setNewImageUrl(e.target.value)}
                         placeholder="https://example.com/banner.jpg"
-                        className="border-2 border-purple-600 rounded-xl h-12"
+                        className="border-2 border-slate-300 rounded-xl h-11 text-sm"
                         data-testid="image-url-input"
                       />
                       <Button
                         onClick={handleAddImage}
                         type="button"
-                        className="bg-purple-600 hover:bg-purple-700 rounded-xl px-6"
+                        className="bg-slate-600 hover:bg-slate-700 rounded-xl px-5"
                         data-testid="add-image-btn"
                       >
-                        <Plus size={20} />
+                        <Plus size={18} />
                       </Button>
                     </div>
+                    <p className="text-xs text-red-500">Note: Sirf direct image URLs kaam karenge (Google Photos sharing links nahi chalenge)</p>
                   </div>
 
                   {/* Image List */}
                   {bannerImages.length > 0 && (
                     <div className="space-y-2">
-                      <Label className="text-sm font-semibold">Added Images:</Label>
+                      <Label className="text-sm font-semibold">Added Images ({bannerImages.length}):</Label>
                       {bannerImages.map((img, idx) => (
                         <div key={idx} className="flex items-center gap-2 p-3 bg-slate-50 rounded-xl border">
-                          <img src={img} alt={`Img ${idx + 1}`} className="w-16 h-10 object-cover rounded-lg" onError={(e) => { e.target.src = 'https://via.placeholder.com/64x40'; }} />
-                          <span className="text-sm flex-1 truncate text-slate-600">{img}</span>
+                          <img src={img} alt={`Img ${idx + 1}`} className="w-16 h-10 object-cover rounded-lg border" onError={(e) => { e.target.src = 'https://via.placeholder.com/64x40?text=Error'; }} />
+                          <span className="text-xs flex-1 truncate text-slate-600">{img.length > 50 ? '...' + img.slice(-45) : img}</span>
                           <Button
                             onClick={() => handleRemoveImage(idx)}
                             size="sm"
@@ -593,7 +653,7 @@ const AdminPanel = () => {
                   <Button
                     onClick={() => handleUpdateBanner('image')}
                     className="w-full bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:from-purple-700 hover:to-fuchsia-700 rounded-xl h-12"
-                    disabled={isLoading}
+                    disabled={isLoading || bannerImages.length === 0}
                     data-testid="save-image-banner-btn"
                   >
                     {isLoading ? 'Saving...' : 'Save Image Banner'}

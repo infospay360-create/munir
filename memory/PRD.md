@@ -18,9 +18,10 @@ Full-stack mobile-friendly web site for Mobile Recharge + Utility Bill + MLM sys
 6. Recharge with operator selection (E-Wallet/Coins payment)
 7. Profile with KYC & Nominee details
 8. Admin Panel (Users, Funds approval, Coin packages, Commission settings)
-9. **Text Banner + Image Banner** - Admin-controlled, separate management (DONE Feb 2026)
-10. **Bank Withdrawal System** - PIN-secured, admin approval flow (DONE Feb 2026)
-11. Shopping/Vendor (MOCKED - basic CRUD only)
+9. **Text Banner + Image Banner** - Separate admin management, file upload support (DONE Feb 2026)
+10. **Bank Withdrawal API** - PIN-secured, admin approval flow (Backend DONE Feb 2026)
+11. **Image File Upload** for banners - direct upload to server (DONE Feb 2026)
+12. Shopping/Vendor (MOCKED - basic CRUD only)
 
 ## DB Collections
 - `users`: name, mobile, password_hash, pin_hash, role, wallets, referral data
@@ -30,17 +31,26 @@ Full-stack mobile-friendly web site for Mobile Recharge + Utility Bill + MLM sys
 - `withdrawals`: user_id, amount, bank details, status
 - `products`, `cart`: Shopping (mocked)
 
+## Key API Endpoints
+- POST /api/auth/register, /api/auth/login
+- GET /api/banner (returns text + images)
+- POST /api/admin/banner/text (text + color)
+- POST /api/admin/banner/image (image URLs)
+- POST /api/admin/banner/upload (file upload)
+- POST /api/wallet/withdraw (PIN-secured)
+- GET /api/admin/withdrawals
+
 ## Admin Credentials
 - Mobile: 9999999999, Password: Admin@123, PIN: 1234
 
 ## Backlog (Priority Order)
 ### P1
 - Bank Withdrawal frontend UI (WalletPage integration)
-- Shopping / Multi-Vendor real backend marketplace logic
+- Shopping / Multi-Vendor real backend logic
 
 ### P2
 - Utility Bills Payment (Electricity, Gas, Water)
-- Admin KYC Approval System (view/approve/reject documents)
+- Admin KYC Approval System
 - Admin Withdrawal approval tab in AdminPanel
 
 ### P3

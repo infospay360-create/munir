@@ -4,7 +4,8 @@ from pathlib import Path
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
-from fastapi import FastAPI, APIRouter, HTTPException, Request, Response, Depends
+from fastapi import FastAPI, APIRouter, HTTPException, Request, Response, Depends, UploadFile, File
+from fastapi.staticfiles import StaticFiles
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
@@ -17,6 +18,8 @@ import jwt
 from bson import ObjectId
 import secrets
 import random
+import uuid
+import base64
 from collections import deque
 
 mongo_url = os.environ['MONGO_URL']
@@ -25,6 +28,11 @@ db = client[os.environ['DB_NAME']]
 
 app = FastAPI()
 api_router = APIRouter(prefix="/api")
+
+# Setup uploads directory
+UPLOAD_DIR = ROOT_DIR / "uploads"
+UPLOAD_DIR.mkdir(exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
 
 JWT_ALGORITHM = "HS256"
 
@@ -1120,6 +1128,22 @@ async def update_banner(req: FullBannerRequest, request: Request):
             upsert=True
         )
     return {"message": "Banner updated"}
+
+@api_router.post("/admin/banner/upload")
+async def upload_banner_image(request: Request, file: UploadFile = File(...)):
+    await get_admin_user(request)
+    ext = file.filename.split(".")[-1].lower() if "." in file.filename else "jpg"
+    if ext not in ("jpg", "jpeg", "png", "gif", "webp"):
+        raise HTTPException(status_code=400, detail="Only image files allowed (jpg, png, gif, webp)")
+    filename = f"banner_{uuid.uuid4().hex[:12]}.{ext}"
+    filepath = UPLOAD_DIR / filename
+    content = await file.read()
+    if len(content) > 5 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="File too large (max 5MB)")
+    with open(filepath, "wb") as f:
+        f.write(content)
+    image_url = f"/uploads/{filename}"
+    return {"url": image_url, "message": "Image uploaded"}
 
 # --- Bank Withdrawal Route ---
 

@@ -17,6 +17,7 @@ const DashboardV2 = () => {
   const [bannerData, setBannerData] = useState(null);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [imageLoadFailed, setImageLoadFailed] = useState({});
 
   React.useEffect(() => {
     fetchDashboardData();
@@ -169,36 +170,46 @@ const DashboardV2 = () => {
       </motion.div>
 
       {/* Image Banner Slider */}
-      {bannerData?.images && bannerData.images.length > 0 && (
-        <motion.div 
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="relative overflow-hidden shadow-lg"
-          data-testid="image-banner"
-        >
-          <div className="relative h-40 md:h-52">
-            <img 
-              src={bannerData.images[currentSlide]} 
-              alt="Banner" 
-              className="w-full h-full object-cover transition-all duration-700 ease-in-out"
-              onError={(e) => { e.target.style.display = 'none'; }}
-            />
-          </div>
-          {bannerData.images.length > 1 && (
-            <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-2">
-              {bannerData.images.map((_, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => setCurrentSlide(idx)}
-                  className={`w-2.5 h-2.5 rounded-full transition-all ${
-                    idx === currentSlide ? 'bg-white w-5 shadow-lg' : 'bg-white/50'
-                  }`}
-                />
-              ))}
+      {bannerData?.images && bannerData.images.length > 0 && (() => {
+        const validImages = bannerData.images.filter((_, idx) => !imageLoadFailed[idx]);
+        if (validImages.length === 0) return null;
+        return (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="relative overflow-hidden shadow-lg"
+            data-testid="image-banner"
+          >
+            <div className="relative h-40 md:h-52 bg-slate-100">
+              <img 
+                src={bannerData.images[currentSlide]} 
+                alt="Banner" 
+                className="w-full h-full object-cover transition-all duration-700 ease-in-out"
+                onError={(e) => {
+                  setImageLoadFailed(prev => ({...prev, [currentSlide]: true}));
+                  const nextValid = bannerData.images.findIndex((_, i) => i !== currentSlide && !imageLoadFailed[i]);
+                  if (nextValid >= 0) setCurrentSlide(nextValid);
+                }}
+              />
             </div>
-          )}
-        </motion.div>
-      )}
+            {bannerData.images.length > 1 && (
+              <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-2">
+                {bannerData.images.map((_, idx) => (
+                  !imageLoadFailed[idx] && (
+                    <button
+                      key={idx}
+                      onClick={() => setCurrentSlide(idx)}
+                      className={`w-2.5 h-2.5 rounded-full transition-all ${
+                        idx === currentSlide ? 'bg-white w-5 shadow-lg' : 'bg-white/50'
+                      }`}
+                    />
+                  )
+                ))}
+              </div>
+            )}
+          </motion.div>
+        );
+      })()}
 
       {/* Dashboard Cards - Comprehensive Stats */}
       <div className="p-4 pb-8">
