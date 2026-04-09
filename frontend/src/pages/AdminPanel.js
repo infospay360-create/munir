@@ -29,6 +29,7 @@ const AdminPanel = () => {
   const [bannerImages, setBannerImages] = useState([]);
   const [newImageUrl, setNewImageUrl] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [bannerSubTab, setBannerSubTab] = useState('text');
 
   useEffect(() => {
     fetchDashboardData();
@@ -136,19 +137,24 @@ const AdminPanel = () => {
     }
   };
 
-  const handleUpdateBanner = async () => {
+  const handleUpdateBanner = async (type) => {
     setIsLoading(true);
     try {
-      await axios.post(
-        `${API_URL}/api/admin/banner`,
-        {
-          text: bannerText,
-          color: bannerColor,
-          images: bannerImages
-        },
-        { withCredentials: true }
-      );
-      toast.success('Banner updated successfully!');
+      if (type === 'text') {
+        await axios.post(
+          `${API_URL}/api/admin/banner/text`,
+          { text: bannerText, color: bannerColor },
+          { withCredentials: true }
+        );
+        toast.success('Text banner updated!');
+      } else {
+        await axios.post(
+          `${API_URL}/api/admin/banner/image`,
+          { images: bannerImages },
+          { withCredentials: true }
+        );
+        toast.success('Image banner updated!');
+      }
       setBannerDialog(false);
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Failed to update banner');
@@ -440,155 +446,161 @@ const AdminPanel = () => {
 
         {activeTab === 'banner' && (
           <div className="space-y-6">
-            <Card className="border-slate-200 rounded-2xl p-6" data-testid="banner-settings-card">
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h3 className="text-xl font-bold text-slate-900">Banner Settings</h3>
-                  <p className="text-sm text-slate-600">Customize homepage banner with text, colors & images</p>
-                </div>
-                <Button
-                  onClick={() => setBannerDialog(true)}
-                  className="bg-purple-600 hover:bg-purple-700 rounded-xl"
-                  data-testid="edit-banner-btn"
-                >
-                  <Gear size={20} className="mr-2" />
-                  Edit Banner
-                </Button>
-              </div>
+            {/* Sub-tabs: Text Banner / Image Banner */}
+            <div className="flex gap-3 mb-4">
+              <Button
+                onClick={() => setBannerSubTab('text')}
+                variant={bannerSubTab === 'text' ? 'default' : 'outline'}
+                className={`rounded-xl ${bannerSubTab === 'text' ? 'bg-purple-600 hover:bg-purple-700' : ''}`}
+                data-testid="banner-sub-tab-text"
+              >
+                Text Banner
+              </Button>
+              <Button
+                onClick={() => setBannerSubTab('image')}
+                variant={bannerSubTab === 'image' ? 'default' : 'outline'}
+                className={`rounded-xl ${bannerSubTab === 'image' ? 'bg-purple-600 hover:bg-purple-700' : ''}`}
+                data-testid="banner-sub-tab-image"
+              >
+                Image Banner
+              </Button>
+            </div>
 
-              {/* Current Banner Preview */}
-              <div className="space-y-4">
-                <div>
-                  <Label className="text-sm font-semibold mb-2 block">Current Banner Preview:</Label>
-                  <div className={`bg-gradient-to-r ${bannerColor} text-white p-6 rounded-2xl relative overflow-hidden`}>
-                    {bannerImages.length > 0 && (
-                      <div className="absolute inset-0 opacity-20">
-                        <img src={bannerImages[0]} alt="Banner" className="w-full h-full object-cover" />
-                      </div>
-                    )}
-                    <p className="text-lg font-bold relative z-10 text-center" style={{ fontFamily: 'Outfit, sans-serif' }}>
-                      {bannerText || '💰 Earn Smart · 🚀 Grow Fast · 🏆 Achieve More'}
+            {/* Text Banner Section */}
+            {bannerSubTab === 'text' && (
+              <Card className="border-slate-200 rounded-2xl p-6" data-testid="text-banner-card">
+                <h3 className="text-xl font-bold text-slate-900 mb-2">Text Banner Settings</h3>
+                <p className="text-sm text-slate-600 mb-6">Dashboard pe ek motivational text banner dikhega</p>
+
+                {/* Preview */}
+                <div className="mb-6">
+                  <Label className="text-sm font-semibold mb-2 block">Preview:</Label>
+                  <div className={`bg-gradient-to-r ${bannerColor} text-white p-6 rounded-2xl`}>
+                    <p className="text-lg font-bold text-center" style={{ fontFamily: 'Outfit, sans-serif' }}>
+                      {bannerText || 'Earn Smart - Grow Fast - Achieve More'}
                     </p>
                   </div>
                 </div>
 
-                <div>
-                  <Label className="text-sm font-semibold mb-2 block">Slider Images ({bannerImages.length}):</Label>
-                  {bannerImages.length === 0 ? (
-                    <p className="text-sm text-slate-500">No images added yet</p>
-                  ) : (
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                      {bannerImages.map((img, idx) => (
-                        <div key={idx} className="relative group">
-                          <img 
-                            src={img} 
-                            alt={`Banner ${idx + 1}`} 
-                            className="w-full h-24 object-cover rounded-xl border-2 border-slate-200"
-                            onError={(e) => {
-                              e.target.src = 'https://via.placeholder.com/300x200?text=Image';
-                            }}
-                          />
-                          <div className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
-                            <X size={14} />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </Card>
-
-            {/* Banner Edit Dialog */}
-            <Dialog open={bannerDialog} onOpenChange={setBannerDialog}>
-              <DialogContent className="sm:max-w-2xl" data-testid="banner-dialog">
-                <DialogHeader>
-                  <DialogTitle className="text-2xl">Edit Banner Settings</DialogTitle>
-                  <DialogDescription>Customize banner text, colors and slider images</DialogDescription>
-                </DialogHeader>
-                <div className="space-y-6 py-4">
-                  {/* Banner Text */}
+                {/* Edit Form */}
+                <div className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="bannerText">Banner Text</Label>
                     <Input
                       id="bannerText"
                       value={bannerText}
                       onChange={(e) => setBannerText(e.target.value)}
-                      placeholder="💰 Earn Smart · 🚀 Grow Fast · 🏆 Achieve More"
+                      placeholder="Earn Smart - Grow Fast - Achieve More"
                       className="border-2 border-purple-600 rounded-xl h-12"
                       data-testid="banner-text-input"
                     />
                   </div>
-
-                  {/* Banner Color */}
                   <div className="space-y-2">
-                    <Label>Banner Color Gradient</Label>
+                    <Label>Banner Color</Label>
                     <Select value={bannerColor} onValueChange={setBannerColor}>
                       <SelectTrigger className="border-2 border-purple-600 rounded-xl h-12" data-testid="banner-color-select">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="from-purple-600 via-pink-600 to-rose-600">Purple → Pink → Rose</SelectItem>
-                        <SelectItem value="from-blue-600 via-indigo-600 to-purple-600">Blue → Indigo → Purple</SelectItem>
-                        <SelectItem value="from-emerald-600 via-teal-600 to-cyan-600">Emerald → Teal → Cyan</SelectItem>
-                        <SelectItem value="from-orange-600 via-red-600 to-pink-600">Orange → Red → Pink</SelectItem>
-                        <SelectItem value="from-yellow-500 via-amber-500 to-orange-600">Yellow → Amber → Orange</SelectItem>
+                        <SelectItem value="from-purple-600 via-pink-600 to-rose-600">Purple - Pink - Rose</SelectItem>
+                        <SelectItem value="from-blue-600 via-indigo-600 to-purple-600">Blue - Indigo - Purple</SelectItem>
+                        <SelectItem value="from-emerald-600 via-teal-600 to-cyan-600">Emerald - Teal - Cyan</SelectItem>
+                        <SelectItem value="from-orange-600 via-red-600 to-pink-600">Orange - Red - Pink</SelectItem>
+                        <SelectItem value="from-yellow-500 via-amber-500 to-orange-600">Yellow - Amber - Orange</SelectItem>
                         <SelectItem value="from-slate-900 via-slate-800 to-slate-900">Dark Slate</SelectItem>
                       </SelectContent>
                     </Select>
                     <div className={`h-8 rounded-xl bg-gradient-to-r ${bannerColor}`}></div>
                   </div>
+                  <Button
+                    onClick={() => handleUpdateBanner('text')}
+                    className="w-full bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:from-purple-700 hover:to-fuchsia-700 rounded-xl h-12"
+                    disabled={isLoading}
+                    data-testid="save-text-banner-btn"
+                  >
+                    {isLoading ? 'Saving...' : 'Save Text Banner'}
+                  </Button>
+                </div>
+              </Card>
+            )}
 
-                  {/* Slider Images */}
+            {/* Image Banner Section */}
+            {bannerSubTab === 'image' && (
+              <Card className="border-slate-200 rounded-2xl p-6" data-testid="image-banner-card">
+                <h3 className="text-xl font-bold text-slate-900 mb-2">Image Banner / Slider</h3>
+                <p className="text-sm text-slate-600 mb-6">Dashboard pe image slider banner dikhega</p>
+
+                {/* Image Preview */}
+                {bannerImages.length > 0 && (
+                  <div className="mb-6">
+                    <Label className="text-sm font-semibold mb-2 block">Preview ({bannerImages.length} images):</Label>
+                    <div className="relative overflow-hidden rounded-2xl h-40 bg-slate-100">
+                      <img 
+                        src={bannerImages[0]} 
+                        alt="Banner Preview" 
+                        className="w-full h-full object-cover"
+                        onError={(e) => { e.target.src = 'https://via.placeholder.com/800x200?text=Image+Banner'; }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Add Image URL */}
+                <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label>Slider Images (URLs)</Label>
+                    <Label>Add Image URL</Label>
                     <div className="flex gap-2">
                       <Input
                         value={newImageUrl}
                         onChange={(e) => setNewImageUrl(e.target.value)}
-                        placeholder="https://example.com/image.jpg"
+                        placeholder="https://example.com/banner.jpg"
                         className="border-2 border-purple-600 rounded-xl h-12"
                         data-testid="image-url-input"
                       />
                       <Button
                         onClick={handleAddImage}
                         type="button"
-                        className="bg-purple-600 hover:bg-purple-700 rounded-xl"
+                        className="bg-purple-600 hover:bg-purple-700 rounded-xl px-6"
                         data-testid="add-image-btn"
                       >
                         <Plus size={20} />
                       </Button>
                     </div>
-                    {bannerImages.length > 0 && (
-                      <div className="space-y-2 mt-3">
-                        {bannerImages.map((img, idx) => (
-                          <div key={idx} className="flex items-center gap-2 p-2 bg-slate-50 rounded-lg">
-                            <span className="text-sm flex-1 truncate">{img}</span>
-                            <Button
-                              onClick={() => handleRemoveImage(idx)}
-                              size="sm"
-                              variant="destructive"
-                              className="h-8 rounded-lg"
-                            >
-                              <X size={16} />
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
                   </div>
 
+                  {/* Image List */}
+                  {bannerImages.length > 0 && (
+                    <div className="space-y-2">
+                      <Label className="text-sm font-semibold">Added Images:</Label>
+                      {bannerImages.map((img, idx) => (
+                        <div key={idx} className="flex items-center gap-2 p-3 bg-slate-50 rounded-xl border">
+                          <img src={img} alt={`Img ${idx + 1}`} className="w-16 h-10 object-cover rounded-lg" onError={(e) => { e.target.src = 'https://via.placeholder.com/64x40'; }} />
+                          <span className="text-sm flex-1 truncate text-slate-600">{img}</span>
+                          <Button
+                            onClick={() => handleRemoveImage(idx)}
+                            size="sm"
+                            variant="destructive"
+                            className="h-8 rounded-lg"
+                            data-testid={`remove-image-${idx}`}
+                          >
+                            <X size={16} />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
                   <Button
-                    onClick={handleUpdateBanner}
+                    onClick={() => handleUpdateBanner('image')}
                     className="w-full bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:from-purple-700 hover:to-fuchsia-700 rounded-xl h-12"
                     disabled={isLoading}
-                    data-testid="save-banner-btn"
+                    data-testid="save-image-banner-btn"
                   >
-                    {isLoading ? 'Saving...' : 'Save Banner Settings'}
+                    {isLoading ? 'Saving...' : 'Save Image Banner'}
                   </Button>
                 </div>
-              </DialogContent>
-            </Dialog>
+              </Card>
+            )}
           </div>
         )}
       </div>

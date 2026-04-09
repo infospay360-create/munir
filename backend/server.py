@@ -960,25 +960,7 @@ Create via signup with referral code: ADMIN001
     Path("/app/memory").mkdir(exist_ok=True)
     Path("/app/memory/test_credentials.md").write_text(credentials_content)
 
-app.include_router(api_router)
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_credentials=True,
-    allow_origins=[os.environ.get("FRONTEND_URL", "http://localhost:3000")],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
-
-@app.on_event("shutdown")
-async def shutdown_db_client():
-    client.close()
+# --- Shopping / Vendor Routes ---
 
 class ProductRequest(BaseModel):
     name: str
@@ -1013,11 +995,9 @@ async def get_products(request: Request, skip: int = 0, limit: int = 50, categor
         await get_current_user(request)
     except:
         pass
-    
     query = {}
     if category:
         query["category"] = category
-    
     products = await db.products.find(query, {"_id": 0}).skip(skip).limit(min(limit, 100)).to_list(None)
     return {"products": products}
 
@@ -1025,10 +1005,8 @@ async def get_products(request: Request, skip: int = 0, limit: int = 50, categor
 async def add_product(req: ProductRequest, request: Request):
     user = await get_current_user(request)
     user_doc = await db.users.find_one({"_id": ObjectId(user["_id"])})
-    
     if not user_doc.get("is_vendor"):
         raise HTTPException(status_code=403, detail="Only vendors can add products")
-    
     product = {
         "name": req.name,
         "description": req.description,
@@ -1040,21 +1018,18 @@ async def add_product(req: ProductRequest, request: Request):
         "vendor_name": user_doc.get("name", "Unknown"),
         "created_at": datetime.now(timezone.utc)
     }
-    
     await db.products.insert_one(product)
     return {"message": "Product added successfully"}
 
 @api_router.post("/cart/add")
 async def add_to_cart(req: AddToCartRequest, request: Request):
     user = await get_current_user(request)
-    
     cart_item = {
         "user_id": user["_id"],
         "product_id": req.product_id,
         "quantity": req.quantity,
         "added_at": datetime.now(timezone.utc)
     }
-    
     existing = await db.cart.find_one({"user_id": user["_id"], "product_id": req.product_id})
     if existing:
         await db.cart.update_one(
@@ -1063,42 +1038,192 @@ async def add_to_cart(req: AddToCartRequest, request: Request):
         )
     else:
         await db.cart.insert_one(cart_item)
-    
     return {"message": "Added to cart"}
 
-class BannerRequest(BaseModel):
+# --- Banner Routes (Text Banner + Image Banner) ---
+
+class TextBannerRequest(BaseModel):
     text: str
     color: str
-    images: Optional[List[str]] = []
+
+class ImageBannerRequest(BaseModel):
+    images: List[str]
+
+class FullBannerRequest(BaseModel):
+    text: Optional[str] = None
+    color: Optional[str] = None
+    images: Optional[List[str]] = None
 
 @api_router.get("/banner")
 async def get_banner():
-    banner = await db.settings.find_one({"type": "banner"})
-    if not banner:
-        default_banner = {
-            "type": "banner",
-            "text": "💰 Earn Smart · 🚀 Grow Fast · 🏆 Achieve More",
-            "color": "from-purple-600 via-pink-600 to-rose-600",
+    text_banner = await db.settings.find_one({"type": "text_banner"})
+    image_banner = await db.settings.find_one({"type": "image_banner"})
+    if not text_banner:
+        text_banner = {
+            "type": "text_banner",
+            "text": "Earn Smart - Grow Fast - Achieve More",
+            "color": "from-purple-600 via-pink-600 to-rose-600"
+        }
+        await db.settings.insert_one(text_banner)
+    if not image_banner:
+        image_banner = {
+            "type": "image_banner",
             "images": []
         }
-        await db.settings.insert_one(default_banner)
-        banner = default_banner
-    
-    banner.pop("_id", None)
-    return banner
+        await db.settings.insert_one(image_banner)
+    text_banner.pop("_id", None)
+    image_banner.pop("_id", None)
+    return {
+        "text": text_banner.get("text", ""),
+        "color": text_banner.get("color", "from-purple-600 via-pink-600 to-rose-600"),
+        "images": image_banner.get("images", [])
+    }
 
-@api_router.post("/admin/banner")
-async def update_banner(req: BannerRequest, request: Request):
-    admin = await get_admin_user(request)
-    
+@api_router.post("/admin/banner/text")
+async def update_text_banner(req: TextBannerRequest, request: Request):
+    await get_admin_user(request)
     await db.settings.update_one(
-        {"type": "banner"},
-        {"$set": {
-            "text": req.text,
-            "color": req.color,
-            "images": req.images
-        }},
+        {"type": "text_banner"},
+        {"$set": {"text": req.text, "color": req.color}},
         upsert=True
     )
-    
+    return {"message": "Text banner updated"}
+
+@api_router.post("/admin/banner/image")
+async def update_image_banner(req: ImageBannerRequest, request: Request):
+    await get_admin_user(request)
+    await db.settings.update_one(
+        {"type": "image_banner"},
+        {"$set": {"images": req.images}},
+        upsert=True
+    )
+    return {"message": "Image banner updated"}
+
+@api_router.post("/admin/banner")
+async def update_banner(req: FullBannerRequest, request: Request):
+    await get_admin_user(request)
+    if req.text is not None or req.color is not None:
+        text_update = {}
+        if req.text is not None:
+            text_update["text"] = req.text
+        if req.color is not None:
+            text_update["color"] = req.color
+        await db.settings.update_one(
+            {"type": "text_banner"},
+            {"$set": text_update},
+            upsert=True
+        )
+    if req.images is not None:
+        await db.settings.update_one(
+            {"type": "image_banner"},
+            {"$set": {"images": req.images}},
+            upsert=True
+        )
     return {"message": "Banner updated"}
+
+# --- Bank Withdrawal Route ---
+
+class WithdrawRequest(BaseModel):
+    amount: float
+    pin: str
+    bank_name: Optional[str] = None
+    account_number: Optional[str] = None
+    ifsc_code: Optional[str] = None
+
+@api_router.post("/wallet/withdraw")
+async def withdraw_to_bank(req: WithdrawRequest, request: Request):
+    user = await get_current_user(request)
+    user_doc = await db.users.find_one({"_id": ObjectId(user["_id"])})
+    if not user_doc.get("pin_hash"):
+        raise HTTPException(status_code=400, detail="PIN not set")
+    if not verify_password(req.pin, user_doc["pin_hash"]):
+        raise HTTPException(status_code=401, detail="Invalid PIN")
+    if req.amount < 100:
+        raise HTTPException(status_code=400, detail="Minimum withdrawal is 100")
+    if user_doc.get("main_wallet", 0.0) < req.amount:
+        raise HTTPException(status_code=400, detail="Insufficient main wallet balance")
+    await db.users.update_one(
+        {"_id": ObjectId(user["_id"])},
+        {"$inc": {"main_wallet": -req.amount}}
+    )
+    withdrawal_doc = {
+        "user_id": user["_id"],
+        "amount": req.amount,
+        "bank_name": req.bank_name,
+        "account_number": req.account_number,
+        "ifsc_code": req.ifsc_code,
+        "status": "pending",
+        "created_at": datetime.now(timezone.utc)
+    }
+    result = await db.withdrawals.insert_one(withdrawal_doc)
+    await db.transactions.insert_one({
+        "user_id": user["_id"],
+        "type": "withdrawal",
+        "amount": -req.amount,
+        "status": "pending",
+        "description": f"Bank withdrawal - {req.bank_name or 'N/A'}",
+        "created_at": datetime.now(timezone.utc)
+    })
+    return {"message": "Withdrawal request submitted", "request_id": str(result.inserted_id)}
+
+@api_router.get("/admin/withdrawals")
+async def get_withdrawals(request: Request, status: Optional[str] = None):
+    await get_admin_user(request)
+    query = {}
+    if status:
+        query["status"] = status
+    withdrawals = await db.withdrawals.find(query).sort("created_at", -1).to_list(1000)
+    for w in withdrawals:
+        w["_id"] = str(w["_id"])
+        if isinstance(w.get("created_at"), datetime):
+            w["created_at"] = w["created_at"].isoformat()
+    return {"withdrawals": withdrawals}
+
+class ApproveWithdrawalRequest(BaseModel):
+    request_id: str
+    status: str
+
+@api_router.post("/admin/approve-withdrawal")
+async def approve_withdrawal(req: ApproveWithdrawalRequest, request: Request):
+    await get_admin_user(request)
+    wd = await db.withdrawals.find_one({"_id": ObjectId(req.request_id)})
+    if not wd:
+        raise HTTPException(status_code=404, detail="Request not found")
+    if wd["status"] != "pending":
+        raise HTTPException(status_code=400, detail="Request already processed")
+    await db.withdrawals.update_one(
+        {"_id": ObjectId(req.request_id)},
+        {"$set": {"status": req.status, "updated_at": datetime.now(timezone.utc)}}
+    )
+    if req.status == "rejected":
+        await db.users.update_one(
+            {"_id": ObjectId(wd["user_id"])},
+            {"$inc": {"main_wallet": wd["amount"]}}
+        )
+    await db.transactions.update_one(
+        {"user_id": wd["user_id"], "type": "withdrawal", "amount": -wd["amount"], "status": "pending"},
+        {"$set": {"status": req.status}}
+    )
+    return {"message": f"Withdrawal {req.status}"}
+
+# --- Include Router & Middleware (MUST be after ALL route definitions) ---
+
+app.include_router(api_router)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_credentials=True,
+    allow_origins=[os.environ.get("FRONTEND_URL", "http://localhost:3000")],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+@app.on_event("shutdown")
+async def shutdown_db_client():
+    client.close()

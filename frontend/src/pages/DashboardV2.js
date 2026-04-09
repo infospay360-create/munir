@@ -157,41 +157,48 @@ const DashboardV2 = () => {
         </div>
       </div>
 
-      {/* Motivational Banner with Animation */}
+      {/* Text Banner */}
       <motion.div 
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className={`bg-gradient-to-r ${bannerData?.color || 'from-purple-600 via-pink-600 to-rose-600'} text-white p-4 text-center shadow-lg relative overflow-hidden`}
+        className={`bg-gradient-to-r ${bannerData?.color || 'from-purple-600 via-pink-600 to-rose-600'} text-white p-4 text-center shadow-lg`}
       >
-        {bannerData?.images && bannerData.images.length > 0 && (
-          <div className="absolute inset-0 transition-all duration-1000 ease-in-out">
+        <p className="text-lg font-bold" style={{ fontFamily: 'Outfit, sans-serif' }} data-testid="text-banner">
+          {bannerData?.text || "Earn Smart - Grow Fast - Achieve More"}
+        </p>
+      </motion.div>
+
+      {/* Image Banner Slider */}
+      {bannerData?.images && bannerData.images.length > 0 && (
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="relative overflow-hidden shadow-lg"
+          data-testid="image-banner"
+        >
+          <div className="relative h-40 md:h-52">
             <img 
               src={bannerData.images[currentSlide]} 
               alt="Banner" 
-              className="w-full h-full object-cover opacity-20"
-              onError={(e) => {
-                e.target.style.display = 'none';
-              }}
+              className="w-full h-full object-cover transition-all duration-700 ease-in-out"
+              onError={(e) => { e.target.style.display = 'none'; }}
             />
           </div>
-        )}
-        <div className="absolute inset-0 bg-white/10 backdrop-blur-3xl"></div>
-        <p className="text-lg font-bold relative z-10" style={{ fontFamily: 'Outfit, sans-serif' }}>
-          {bannerData?.text || "💰 Earn Smart · 🚀 Grow Fast · 🏆 Achieve More"}
-        </p>
-        {bannerData?.images && bannerData.images.length > 1 && (
-          <div className="flex justify-center gap-2 mt-2 relative z-10">
-            {bannerData.images.map((_, idx) => (
-              <div
-                key={idx}
-                className={`w-2 h-2 rounded-full transition-all ${
-                  idx === currentSlide ? 'bg-white w-4' : 'bg-white/50'
-                }`}
-              />
-            ))}
-          </div>
-        )}
-      </motion.div>
+          {bannerData.images.length > 1 && (
+            <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-2">
+              {bannerData.images.map((_, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setCurrentSlide(idx)}
+                  className={`w-2.5 h-2.5 rounded-full transition-all ${
+                    idx === currentSlide ? 'bg-white w-5 shadow-lg' : 'bg-white/50'
+                  }`}
+                />
+              ))}
+            </div>
+          )}
+        </motion.div>
+      )}
 
       {/* Dashboard Cards - Comprehensive Stats */}
       <div className="p-4 pb-8">
