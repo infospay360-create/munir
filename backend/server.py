@@ -511,6 +511,13 @@ async def user_transfer(req: UserTransferRequest, request: Request):
     
     return {"message": "Transfer successful"}
 
+class AddFundRequest(BaseModel):
+    amount: float
+    utr_number: Optional[str] = None
+    screenshot_url: Optional[str] = None
+    payment_method: Optional[str] = None
+    remarks: Optional[str] = None
+
 @api_router.post("/wallet/add-fund-request")
 async def add_fund_request(req: AddFundRequest, request: Request):
     user = await get_current_user(request)
@@ -520,6 +527,10 @@ async def add_fund_request(req: AddFundRequest, request: Request):
         "mobile": user["mobile"],
         "name": user["name"],
         "amount": req.amount,
+        "utr_number": req.utr_number,
+        "screenshot_url": req.screenshot_url,
+        "payment_method": req.payment_method,
+        "remarks": req.remarks,
         "status": "pending",
         "created_at": datetime.now(timezone.utc)
     }
