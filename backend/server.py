@@ -1069,7 +1069,7 @@ async def add_to_cart(req: AddToCartRequest, request: Request):
 class BannerRequest(BaseModel):
     text: str
     color: str
-    image_url: Optional[str] = None
+    images: Optional[List[str]] = []
 
 @api_router.get("/banner")
 async def get_banner():
@@ -1079,7 +1079,7 @@ async def get_banner():
             "type": "banner",
             "text": "💰 Earn Smart · 🚀 Grow Fast · 🏆 Achieve More",
             "color": "from-purple-600 via-pink-600 to-rose-600",
-            "image_url": None
+            "images": []
         }
         await db.settings.insert_one(default_banner)
         banner = default_banner
@@ -1096,7 +1096,7 @@ async def update_banner(req: BannerRequest, request: Request):
         {"$set": {
             "text": req.text,
             "color": req.color,
-            "image_url": req.image_url
+            "images": req.images
         }},
         upsert=True
     )

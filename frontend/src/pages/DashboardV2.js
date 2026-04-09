@@ -14,11 +14,23 @@ const DashboardV2 = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [dashboardData, setDashboardData] = useState(null);
+  const [bannerData, setBannerData] = useState(null);
+  const [currentSlide, setCurrentSlide] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
 
   React.useEffect(() => {
     fetchDashboardData();
+    fetchBannerData();
   }, []);
+
+  React.useEffect(() => {
+    if (bannerData?.images && bannerData.images.length > 1) {
+      const timer = setInterval(() => {
+        setCurrentSlide((prev) => (prev + 1) % bannerData.images.length);
+      }, 3000);
+      return () => clearInterval(timer);
+    }
+  }, [bannerData]);
 
   const fetchDashboardData = async () => {
     try {
@@ -28,6 +40,20 @@ const DashboardV2 = () => {
       setDashboardData(data);
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error);
+    }
+  };
+
+  const fetchBannerData = async () => {
+    try {
+      const { data } = await axios.get(`${API_URL}/api/banner`);
+      setBannerData(data);
+    } catch (error) {
+      console.error('Failed to fetch banner data:', error);
+      setBannerData({
+        text: "💰 Earn Smart · 🚀 Grow Fast · 🏆 Achieve More",
+        color: "from-purple-600 via-pink-600 to-rose-600",
+        images: []
+      });
     }
   };
 
@@ -135,12 +161,36 @@ const DashboardV2 = () => {
       <motion.div 
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-gradient-to-r from-purple-600 via-pink-600 to-rose-600 text-white p-4 text-center shadow-lg relative overflow-hidden"
+        className={`bg-gradient-to-r ${bannerData?.color || 'from-purple-600 via-pink-600 to-rose-600'} text-white p-4 text-center shadow-lg relative overflow-hidden`}
       >
+        {bannerData?.images && bannerData.images.length > 0 && (
+          <div className="absolute inset-0 transition-all duration-1000 ease-in-out">
+            <img 
+              src={bannerData.images[currentSlide]} 
+              alt="Banner" 
+              className="w-full h-full object-cover opacity-20"
+              onError={(e) => {
+                e.target.style.display = 'none';
+              }}
+            />
+          </div>
+        )}
         <div className="absolute inset-0 bg-white/10 backdrop-blur-3xl"></div>
         <p className="text-lg font-bold relative z-10" style={{ fontFamily: 'Outfit, sans-serif' }}>
-          💰 Earn Smart · 🚀 Grow Fast · 🏆 Achieve More
+          {bannerData?.text || "💰 Earn Smart · 🚀 Grow Fast · 🏆 Achieve More"}
         </p>
+        {bannerData?.images && bannerData.images.length > 1 && (
+          <div className="flex justify-center gap-2 mt-2 relative z-10">
+            {bannerData.images.map((_, idx) => (
+              <div
+                key={idx}
+                className={`w-2 h-2 rounded-full transition-all ${
+                  idx === currentSlide ? 'bg-white w-4' : 'bg-white/50'
+                }`}
+              />
+            ))}
+          </div>
+        )}
       </motion.div>
 
       {/* Dashboard Cards - Comprehensive Stats */}
