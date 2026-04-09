@@ -18,27 +18,15 @@ Full-stack mobile-friendly web site for Mobile Recharge + Utility Bill + MLM sys
 6. Recharge with operator selection (E-Wallet/Coins payment)
 7. Profile with KYC & Nominee details
 8. Admin Panel (Users, Funds approval, Coin packages, Commission settings)
-9. **Text Banner + Image Banner** - Separate admin management, file upload support (DONE Feb 2026)
+9. **Text Banner + Image Banner** - Separate admin management, file upload + URL support (DONE Feb 2026)
 10. **Bank Withdrawal API** - PIN-secured, admin approval flow (Backend DONE Feb 2026)
-11. **Image File Upload** for banners - direct upload to server (DONE Feb 2026)
+11. **Image File Upload** for banners via `/api/uploads/` (DONE Feb 2026)
 12. Shopping/Vendor (MOCKED - basic CRUD only)
 
-## DB Collections
-- `users`: name, mobile, password_hash, pin_hash, role, wallets, referral data
-- `transactions`: user_id, type, amount, status, description
-- `fund_requests`: user_id, amount, utr, screenshot, status
-- `settings`: type (text_banner/image_banner), content
-- `withdrawals`: user_id, amount, bank details, status
-- `products`, `cart`: Shopping (mocked)
-
-## Key API Endpoints
-- POST /api/auth/register, /api/auth/login
-- GET /api/banner (returns text + images)
-- POST /api/admin/banner/text (text + color)
-- POST /api/admin/banner/image (image URLs)
-- POST /api/admin/banner/upload (file upload)
-- POST /api/wallet/withdraw (PIN-secured)
-- GET /api/admin/withdrawals
+## Key Fix: Image Upload Routing
+- Static files must be served via `/api/uploads/` (not `/uploads/`) because Kubernetes ingress only routes `/api/*` to backend
+- Upload endpoint: POST /api/admin/banner/upload (multipart form)
+- Stored URLs use full path: `{API_URL}/api/uploads/banner_xxx.png`
 
 ## Admin Credentials
 - Mobile: 9999999999, Password: Admin@123, PIN: 1234

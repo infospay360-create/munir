@@ -32,7 +32,6 @@ api_router = APIRouter(prefix="/api")
 # Setup uploads directory
 UPLOAD_DIR = ROOT_DIR / "uploads"
 UPLOAD_DIR.mkdir(exist_ok=True)
-app.mount("/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
 
 JWT_ALGORITHM = "HS256"
 
@@ -1142,7 +1141,7 @@ async def upload_banner_image(request: Request, file: UploadFile = File(...)):
         raise HTTPException(status_code=400, detail="File too large (max 5MB)")
     with open(filepath, "wb") as f:
         f.write(content)
-    image_url = f"/uploads/{filename}"
+    image_url = f"/api/uploads/{filename}"
     return {"url": image_url, "message": "Image uploaded"}
 
 # --- Bank Withdrawal Route ---
@@ -1233,6 +1232,9 @@ async def approve_withdrawal(req: ApproveWithdrawalRequest, request: Request):
 # --- Include Router & Middleware (MUST be after ALL route definitions) ---
 
 app.include_router(api_router)
+
+# Mount uploads AFTER router so /api/uploads serves static files
+app.mount("/api/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
 
 app.add_middleware(
     CORSMiddleware,
