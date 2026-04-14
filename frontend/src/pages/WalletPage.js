@@ -6,11 +6,11 @@ import { Card } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
-import { ArrowLeft, Wallet, ArrowsLeftRight, PaperPlaneTilt, CurrencyCircleDollar } from '@phosphor-icons/react';
+import { ArrowLeft, Wallet, ArrowsLeftRight, PaperPlaneTilt, CurrencyCircleDollar, Bank } from '@phosphor-icons/react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import axios from 'axios';
+import PinDialog from '../components/PinDialog';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -18,16 +18,28 @@ const WalletPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [walletData, setWalletData] = useState(null);
+
+  // Dialog states
   const [selfTransferDialog, setSelfTransferDialog] = useState(false);
   const [userTransferDialog, setUserTransferDialog] = useState(false);
-  
+  const [withdrawDialog, setWithdrawDialog] = useState(false);
+
+  // Self Transfer
   const [selfAmount, setSelfAmount] = useState('');
-  const [selfPin, setSelfPin] = useState('');
-  
+
+  // User Transfer
   const [transferMobile, setTransferMobile] = useState('');
   const [transferAmount, setTransferAmount] = useState('');
-  const [transferPin, setTransferPin] = useState('');
-  
+
+  // Withdrawal
+  const [withdrawAmount, setWithdrawAmount] = useState('');
+  const [bankName, setBankName] = useState('');
+  const [accountNumber, setAccountNumber] = useState('');
+  const [ifscCode, setIfscCode] = useState('');
+
+  // PIN Dialog
+  const [showPinDialog, setShowPinDialog] = useState(false);
+  const [pendingAction, setPendingAction] = useState(null); // 'self_transfer' | 'user_transfer' | 'withdraw'
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
@@ -45,61 +57,100 @@ const WalletPage = () => {
     }
   };
 
-  const handleSelfTransfer = async () => {
+  // Step 1: User clicks Process -> open PIN dialog
+  const handleSelfTransferProcess = () => {
     if (!user?.has_pin) {
-      toast.error('Please setup PIN first from Profile');
+      toast.error('Pehle Profile se PIN setup karein');
       navigate('/profile');
       return;
     }
-
-    setIsLoading(true);
-    try {
-      await axios.post(
-        `${API_URL}/api/wallet/self-transfer`,
-        {
-          amount: parseFloat(selfAmount),
-          pin: selfPin
-        },
-        { withCredentials: true }
-      );
-      toast.success('Transfer successful!');
-      setSelfTransferDialog(false);
-      setSelfAmount('');
-      setSelfPin('');
-      fetchWalletData();
-    } catch (error) {
-      toast.error(error.response?.data?.detail || 'Transfer failed');
-    } finally {
-      setIsLoading(false);
+    if (!selfAmount || parseFloat(selfAmount) <= 0) {
+      toast.error('Amount dalein');
+      return;
     }
+    setSelfTransferDialog(false);
+    setPendingAction('self_transfer');
+    setShowPinDialog(true);
   };
 
-  const handleUserTransfer = async () => {
+  const handleUserTransferProcess = () => {
     if (!user?.has_pin) {
-      toast.error('Please setup PIN first from Profile');
+      toast.error('Pehle Profile se PIN setup karein');
       navigate('/profile');
       return;
     }
+    if (!transferMobile || transferMobile.length !== 10 || !transferAmount) {
+      toast.error('Sab details bharein');
+      return;
+    }
+    setUserTransferDialog(false);
+    setPendingAction('user_transfer');
+    setShowPinDialog(true);
+  };
 
+  const handleWithdrawProcess = () => {
+    if (!user?.has_pin) {
+      toast.error('Pehle Profile se PIN setup karein');
+      navigate('/profile');
+      return;
+    }
+    if (!withdrawAmount || parseFloat(withdrawAmount) < 100) {
+      toast.error('Minimum withdrawal Rs.100 hai');
+      return;
+    }
+    if (!bankName || !accountNumber || !ifscCode) {
+      toast.error('Bank details bharein');
+      return;
+    }
+    setWithdrawDialog(false);
+    setPendingAction('withdraw');
+    setShowPinDialog(true);
+  };
+
+  // Step 2: PIN confirmed -> execute action
+  const handlePinConfirm = async (pin) => {
     setIsLoading(true);
     try {
-      await axios.post(
-        `${API_URL}/api/wallet/user-transfer`,
-        {
-          receiver_mobile: transferMobile,
-          amount: parseFloat(transferAmount),
-          pin: transferPin
-        },
-        { withCredentials: true }
-      );
-      toast.success('Transfer successful!');
-      setUserTransferDialog(false);
-      setTransferMobile('');
-      setTransferAmount('');
-      setTransferPin('');
+      if (pendingAction === 'self_transfer') {
+        await axios.post(
+          `${API_URL}/api/wallet/self-transfer`,
+          { amount: parseFloat(selfAmount), pin },
+          { withCredentials: true }
+        );
+        toast.success(`Rs.${selfAmount} Main Wallet se E-Wallet mein transfer ho gaya!`);
+        setSelfAmount('');
+      } else if (pendingAction === 'user_transfer') {
+        await axios.post(
+          `${API_URL}/api/wallet/user-transfer`,
+          { receiver_mobile: transferMobile, amount: parseFloat(transferAmount), pin },
+          { withCredentials: true }
+        );
+        toast.success(`Rs.${transferAmount} ${transferMobile} ko bhej diya!`);
+        setTransferMobile('');
+        setTransferAmount('');
+      } else if (pendingAction === 'withdraw') {
+        await axios.post(
+          `${API_URL}/api/wallet/withdraw`,
+          {
+            amount: parseFloat(withdrawAmount),
+            pin,
+            bank_name: bankName,
+            account_number: accountNumber,
+            ifsc_code: ifscCode
+          },
+          { withCredentials: true }
+        );
+        toast.success(`Rs.${withdrawAmount} withdrawal request submitted! Admin approval ke baad process hoga.`);
+        setWithdrawAmount('');
+        setBankName('');
+        setAccountNumber('');
+        setIfscCode('');
+      }
+      setShowPinDialog(false);
+      setPendingAction(null);
       fetchWalletData();
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Transfer failed');
+      toast.error(error.response?.data?.detail || 'Transaction failed');
     } finally {
       setIsLoading(false);
     }
@@ -131,10 +182,7 @@ const WalletPage = () => {
       <div className="max-w-4xl mx-auto p-6 space-y-6">
         {/* Wallet Balances */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-          >
+          <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
             <Card className="bg-gradient-to-br from-slate-900 to-slate-800 text-white border-0 p-6 rounded-2xl shadow-xl" data-testid="main-wallet-balance">
               <div className="flex items-center justify-between mb-4">
                 <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center">
@@ -143,16 +191,13 @@ const WalletPage = () => {
                 <p className="text-xs uppercase tracking-wider text-slate-400">Main Wallet</p>
               </div>
               <p className="text-4xl font-bold mb-2" style={{ fontFamily: 'Outfit, sans-serif' }}>
-                ₹{walletData.main_wallet.toFixed(2)}
+                Rs.{walletData.main_wallet.toFixed(2)}
               </p>
-              <p className="text-sm text-slate-400">For commissions only</p>
+              <p className="text-sm text-slate-400">Commission income</p>
             </Card>
           </motion.div>
 
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-          >
+          <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
             <Card className="bg-gradient-to-br from-emerald-600 to-teal-600 text-white border-0 p-6 rounded-2xl shadow-xl" data-testid="e-wallet-balance">
               <div className="flex items-center justify-between mb-4">
                 <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center">
@@ -161,31 +206,32 @@ const WalletPage = () => {
                 <p className="text-xs uppercase tracking-wider text-emerald-100">E-Wallet</p>
               </div>
               <p className="text-4xl font-bold mb-2" style={{ fontFamily: 'Outfit, sans-serif' }}>
-                ₹{walletData.e_wallet.toFixed(2)}
+                Rs.{walletData.e_wallet.toFixed(2)}
               </p>
-              <p className="text-sm text-emerald-100">For recharge & shopping</p>
+              <p className="text-sm text-emerald-100">Recharge & shopping</p>
             </Card>
           </motion.div>
         </div>
 
-        {/* Transfer Options */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Action Buttons */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Self Transfer */}
           <Dialog open={selfTransferDialog} onOpenChange={setSelfTransferDialog}>
             <DialogTrigger asChild>
               <Button className="h-24 bg-white border-2 border-emerald-200 hover:border-emerald-400 text-slate-900 rounded-2xl flex flex-col items-center justify-center gap-2 transition-all hover:shadow-xl" data-testid="self-transfer-btn">
                 <ArrowsLeftRight size={32} weight="duotone" className="text-emerald-600" />
                 <span className="font-bold">Self Transfer</span>
-                <span className="text-xs text-slate-500">Main → E-Wallet</span>
+                <span className="text-xs text-slate-500">Main to E-Wallet</span>
               </Button>
             </DialogTrigger>
             <DialogContent data-testid="self-transfer-dialog">
               <DialogHeader>
-                <DialogTitle>Self Transfer</DialogTitle>
-                <DialogDescription>Transfer from Main Wallet to E-Wallet</DialogDescription>
+                <DialogTitle className="text-xl" style={{ fontFamily: 'Outfit, sans-serif' }}>Self Transfer</DialogTitle>
+                <DialogDescription>Main Wallet se E-Wallet mein transfer</DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
-                  <Label>Amount (₹)</Label>
+                  <Label>Amount (Rs.)</Label>
                   <Input
                     type="number"
                     placeholder="Enter amount"
@@ -194,33 +240,29 @@ const WalletPage = () => {
                     className="border-2 border-purple-600 rounded-xl h-12"
                     data-testid="self-amount-input"
                   />
-                  <p className="text-xs text-slate-500">Available: ₹{walletData.main_wallet.toFixed(2)}</p>
+                  <p className="text-xs text-slate-500">Available: Rs.{walletData.main_wallet.toFixed(2)}</p>
                 </div>
-                <div className="space-y-2">
-                  <Label>Enter PIN</Label>
-                  <div className="flex justify-center">
-                    <InputOTP maxLength={4} value={selfPin} onChange={setSelfPin} data-testid="self-pin-input">
-                      <InputOTPGroup>
-                        <InputOTPSlot index={0} className="w-12 h-12 text-xl border-2 border-purple-600" />
-                        <InputOTPSlot index={1} className="w-12 h-12 text-xl border-2 border-purple-600" />
-                        <InputOTPSlot index={2} className="w-12 h-12 text-xl border-2 border-purple-600" />
-                        <InputOTPSlot index={3} className="w-12 h-12 text-xl border-2 border-purple-600" />
-                      </InputOTPGroup>
-                    </InputOTP>
+                {selfAmount && (
+                  <div className="bg-emerald-50 p-3 rounded-xl border border-emerald-200">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-slate-600">Transfer Amount</span>
+                      <span className="font-bold text-emerald-700">Rs.{selfAmount}</span>
+                    </div>
                   </div>
-                </div>
+                )}
                 <Button
-                  onClick={handleSelfTransfer}
-                  className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 rounded-xl h-12"
-                  disabled={isLoading || !selfAmount || selfPin.length !== 4}
-                  data-testid="submit-self-transfer-btn"
+                  onClick={handleSelfTransferProcess}
+                  className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 rounded-xl h-12 font-semibold"
+                  disabled={!selfAmount}
+                  data-testid="process-self-transfer-btn"
                 >
-                  {isLoading ? 'Transferring...' : 'Transfer'}
+                  Process Transfer
                 </Button>
               </div>
             </DialogContent>
           </Dialog>
 
+          {/* Send Money */}
           <Dialog open={userTransferDialog} onOpenChange={setUserTransferDialog}>
             <DialogTrigger asChild>
               <Button className="h-24 bg-white border-2 border-blue-200 hover:border-blue-400 text-slate-900 rounded-2xl flex flex-col items-center justify-center gap-2 transition-all hover:shadow-xl" data-testid="user-transfer-btn">
@@ -231,8 +273,8 @@ const WalletPage = () => {
             </DialogTrigger>
             <DialogContent data-testid="user-transfer-dialog">
               <DialogHeader>
-                <DialogTitle>Send Money</DialogTitle>
-                <DialogDescription>Transfer to another user's E-Wallet</DialogDescription>
+                <DialogTitle className="text-xl" style={{ fontFamily: 'Outfit, sans-serif' }}>Send Money</DialogTitle>
+                <DialogDescription>Dusre user ke E-Wallet mein transfer</DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
@@ -248,7 +290,7 @@ const WalletPage = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Amount (₹)</Label>
+                  <Label>Amount (Rs.)</Label>
                   <Input
                     type="number"
                     placeholder="Enter amount"
@@ -257,34 +299,128 @@ const WalletPage = () => {
                     className="border-2 border-purple-600 rounded-xl h-12"
                     data-testid="transfer-amount-input"
                   />
-                  <p className="text-xs text-slate-500">Available: ₹{walletData.e_wallet.toFixed(2)}</p>
+                  <p className="text-xs text-slate-500">Available: Rs.{walletData.e_wallet.toFixed(2)}</p>
+                </div>
+                {transferAmount && transferMobile.length === 10 && (
+                  <div className="bg-blue-50 p-3 rounded-xl border border-blue-200">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-slate-600">Send to {transferMobile}</span>
+                      <span className="font-bold text-blue-700">Rs.{transferAmount}</span>
+                    </div>
+                  </div>
+                )}
+                <Button
+                  onClick={handleUserTransferProcess}
+                  className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 rounded-xl h-12 font-semibold"
+                  disabled={!transferMobile || transferMobile.length !== 10 || !transferAmount}
+                  data-testid="process-user-transfer-btn"
+                >
+                  Process Transfer
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          {/* Bank Withdrawal */}
+          <Dialog open={withdrawDialog} onOpenChange={setWithdrawDialog}>
+            <DialogTrigger asChild>
+              <Button className="h-24 bg-white border-2 border-orange-200 hover:border-orange-400 text-slate-900 rounded-2xl flex flex-col items-center justify-center gap-2 transition-all hover:shadow-xl" data-testid="withdraw-btn">
+                <Bank size={32} weight="duotone" className="text-orange-600" />
+                <span className="font-bold">Bank Withdrawal</span>
+                <span className="text-xs text-slate-500">Main Wallet to Bank</span>
+              </Button>
+            </DialogTrigger>
+            <DialogContent data-testid="withdraw-dialog">
+              <DialogHeader>
+                <DialogTitle className="text-xl" style={{ fontFamily: 'Outfit, sans-serif' }}>Bank Withdrawal</DialogTitle>
+                <DialogDescription>Main Wallet se Bank Account mein withdrawal</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label>Amount (Rs.)</Label>
+                  <Input
+                    type="number"
+                    placeholder="Min Rs.100"
+                    value={withdrawAmount}
+                    onChange={(e) => setWithdrawAmount(e.target.value)}
+                    className="border-2 border-purple-600 rounded-xl h-12"
+                    data-testid="withdraw-amount-input"
+                  />
+                  <p className="text-xs text-slate-500">Available: Rs.{walletData.main_wallet.toFixed(2)} | Min: Rs.100</p>
                 </div>
                 <div className="space-y-2">
-                  <Label>Enter PIN</Label>
-                  <div className="flex justify-center">
-                    <InputOTP maxLength={4} value={transferPin} onChange={setTransferPin} data-testid="transfer-pin-input">
-                      <InputOTPGroup>
-                        <InputOTPSlot index={0} className="w-12 h-12 text-xl border-2 border-purple-600" />
-                        <InputOTPSlot index={1} className="w-12 h-12 text-xl border-2 border-purple-600" />
-                        <InputOTPSlot index={2} className="w-12 h-12 text-xl border-2 border-purple-600" />
-                        <InputOTPSlot index={3} className="w-12 h-12 text-xl border-2 border-purple-600" />
-                      </InputOTPGroup>
-                    </InputOTP>
-                  </div>
+                  <Label>Bank Name</Label>
+                  <Input
+                    type="text"
+                    placeholder="e.g., State Bank of India"
+                    value={bankName}
+                    onChange={(e) => setBankName(e.target.value)}
+                    className="border-2 border-purple-600 rounded-xl h-12"
+                    data-testid="bank-name-input"
+                  />
                 </div>
+                <div className="space-y-2">
+                  <Label>Account Number</Label>
+                  <Input
+                    type="text"
+                    placeholder="Enter account number"
+                    value={accountNumber}
+                    onChange={(e) => setAccountNumber(e.target.value.replace(/\D/g, ''))}
+                    className="border-2 border-purple-600 rounded-xl h-12"
+                    data-testid="account-number-input"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>IFSC Code</Label>
+                  <Input
+                    type="text"
+                    placeholder="e.g., SBIN0001234"
+                    value={ifscCode}
+                    onChange={(e) => setIfscCode(e.target.value.toUpperCase())}
+                    className="border-2 border-purple-600 rounded-xl h-12"
+                    data-testid="ifsc-code-input"
+                  />
+                </div>
+                {withdrawAmount && bankName && accountNumber && (
+                  <div className="bg-orange-50 p-3 rounded-xl border border-orange-200">
+                    <p className="text-xs text-slate-500 mb-1">Withdrawal Summary</p>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-slate-600">{bankName} - ****{accountNumber.slice(-4)}</span>
+                      <span className="font-bold text-orange-700">Rs.{withdrawAmount}</span>
+                    </div>
+                  </div>
+                )}
                 <Button
-                  onClick={handleUserTransfer}
-                  className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 rounded-xl h-12"
-                  disabled={isLoading || !transferMobile || transferMobile.length !== 10 || !transferAmount || transferPin.length !== 4}
-                  data-testid="submit-user-transfer-btn"
+                  onClick={handleWithdrawProcess}
+                  className="w-full bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 rounded-xl h-12 font-semibold"
+                  disabled={!withdrawAmount || parseFloat(withdrawAmount) < 100 || !bankName || !accountNumber || !ifscCode}
+                  data-testid="process-withdraw-btn"
                 >
-                  {isLoading ? 'Sending...' : 'Send Money'}
+                  Process Withdrawal
                 </Button>
               </div>
             </DialogContent>
           </Dialog>
         </div>
       </div>
+
+      {/* PIN Dialog - shows after any Process click */}
+      <PinDialog
+        open={showPinDialog}
+        onClose={() => { setShowPinDialog(false); setPendingAction(null); }}
+        onConfirm={handlePinConfirm}
+        title={
+          pendingAction === 'self_transfer' ? 'Confirm Self Transfer' :
+          pendingAction === 'user_transfer' ? 'Confirm Send Money' :
+          pendingAction === 'withdraw' ? 'Confirm Withdrawal' : 'Enter PIN'
+        }
+        description={
+          pendingAction === 'self_transfer' ? `Rs.${selfAmount} transfer ke liye PIN dalein` :
+          pendingAction === 'user_transfer' ? `Rs.${transferAmount} ${transferMobile} ko bhejne ke liye PIN dalein` :
+          pendingAction === 'withdraw' ? `Rs.${withdrawAmount} bank withdrawal ke liye PIN dalein` : 'Security PIN dalein'
+        }
+        isLoading={isLoading}
+      />
     </div>
   );
 };

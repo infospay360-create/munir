@@ -1,46 +1,43 @@
 # PRD - Mobile Recharge + MLM Platform
 
 ## Original Problem Statement
-Full-stack mobile-friendly web site for Mobile Recharge + Utility Bill + MLM system with dual wallet, secure transactions (4-digit PIN), 20-level advanced MLM referral system (auto-placement, cycle logic), Admin Panel, and clean modern UI. Expanded to include Shopping (multi-vendor), KYC/Profile, UTR/Screenshot upload for funds, and admin-controlled banners.
+Full-stack mobile-friendly web site for Mobile Recharge + Utility Bill + MLM system with dual wallet, secure transactions (4-digit PIN), 20-level advanced MLM referral system (auto-placement, cycle logic), Admin Panel, and clean modern UI.
 
 ## Tech Stack
-- Frontend: React + Tailwind CSS + Shadcn UI + Framer Motion
-- Backend: FastAPI (Python)
-- Database: MongoDB (Motor async driver)
-- Auth: JWT (cookie-based)
+React + Tailwind + Shadcn UI + Framer Motion | FastAPI | MongoDB (Motor) | JWT (cookie-based)
 
 ## Core Features Implemented
-1. JWT Auth (Login/Register/Logout) with cookie-based tokens
+1. JWT Auth (Login/Register/Logout)
 2. MLM 20-level referral system (auto-placement, cycles)
 3. Dual Wallet (Main + E-Wallet) + Coins
-4. Dashboard with stats (income, referrals, coins, wallet balances)
+4. Dashboard with stats + Text Banner + Image Banner (admin-controlled)
 5. Add Fund with UTR/Screenshot upload
-6. Recharge with operator selection (E-Wallet/Coins payment)
+6. Recharge (Mobile/DTH/Electricity/Gas/Water) with operator/provider selection
 7. Profile with KYC & Nominee details
-8. Admin Panel (Users, Funds approval, Coin packages, Commission settings)
-9. **Text Banner + Image Banner** - Separate admin management, file upload + URL support (DONE Feb 2026)
-10. **Bank Withdrawal API** - PIN-secured, admin approval flow (Backend DONE Feb 2026)
-11. **Image File Upload** for banners via `/api/uploads/` (DONE Feb 2026)
-12. Shopping/Vendor (MOCKED - basic CRUD only)
+8. Admin Panel (Users, Funds, Banners, Settings)
+9. Text Banner + Image Banner with file upload (Feb 2026)
+10. Bank Withdrawal with bank details (Feb 2026)
+11. **4-Digit PIN Dialog** - 2-step flow on Recharge, Self Transfer, Send Money, Bank Withdrawal (Apr 2026)
+12. **Reusable PinDialog component** at /app/frontend/src/components/PinDialog.js
 
-## Key Fix: Image Upload Routing
-- Static files must be served via `/api/uploads/` (not `/uploads/`) because Kubernetes ingress only routes `/api/*` to backend
-- Upload endpoint: POST /api/admin/banner/upload (multipart form)
-- Stored URLs use full path: `{API_URL}/api/uploads/banner_xxx.png`
+## PIN Flow (2-Step)
+- Step 1: User fills form (amount, details) → clicks "Process"
+- Step 2: PIN popup appears → user enters 4-digit PIN → Confirm → Transaction completes
+- Applied to: Recharge, Self Transfer, User Transfer, Bank Withdrawal
 
 ## Admin Credentials
 - Mobile: 9999999999, Password: Admin@123, PIN: 1234
 
-## Backlog (Priority Order)
+## Backlog
 ### P1
-- Bank Withdrawal frontend UI (WalletPage integration)
-- Shopping / Multi-Vendor real backend logic
+- Shopping / Multi-Vendor backend logic
 
 ### P2
-- Utility Bills Payment (Electricity, Gas, Water)
+- Utility Bills real backend integration
 - Admin KYC Approval System
-- Admin Withdrawal approval tab in AdminPanel
+- Admin Withdrawal approval tab
 
 ### P3
-- Server.py refactoring (split into route files)
+- Server.py refactoring
+- Transaction history page
 - Real payment gateway integration

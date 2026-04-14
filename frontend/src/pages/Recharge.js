@@ -7,11 +7,11 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
-import { ArrowLeft, DeviceMobileCamera, Lightning, Fire, Drop, Coins } from '@phosphor-icons/react';
+import { ArrowLeft, DeviceMobileCamera, Lightning, Fire, Drop } from '@phosphor-icons/react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import axios from 'axios';
+import PinDialog from '../components/PinDialog';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -24,8 +24,8 @@ const Recharge = () => {
   const [operator, setOperator] = useState('');
   const [amount, setAmount] = useState('');
   const [paymentMode, setPaymentMode] = useState('e_wallet');
-  const [pin, setPin] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showPinDialog, setShowPinDialog] = useState(false);
 
   const services = [
     { id: 'mobile', name: 'Mobile Recharge', icon: DeviceMobileCamera, color: 'from-blue-500 to-blue-700' },
@@ -37,29 +37,45 @@ const Recharge = () => {
 
   const mobileOperators = ['Jio', 'Airtel', 'Vi (Vodafone Idea)', 'BSNL'];
   const dthOperators = ['Tata Sky', 'Dish TV', 'Airtel Digital TV', 'Sun Direct'];
+  const electricityProviders = ['MSEDCL', 'TATA Power', 'Adani Electricity', 'BSES Rajdhani', 'BSES Yamuna'];
+  const gasProviders = ['Mahanagar Gas', 'Indraprastha Gas', 'Gujarat Gas', 'Adani Gas'];
+  const waterProviders = ['Municipal Corporation', 'Delhi Jal Board', 'BWSSB Bangalore'];
 
-  const handleRecharge = async () => {
+  const getOperators = () => {
+    if (!selectedService) return mobileOperators;
+    switch (selectedService.id) {
+      case 'mobile': return mobileOperators;
+      case 'dth': return dthOperators;
+      case 'electricity': return electricityProviders;
+      case 'gas': return gasProviders;
+      case 'water': return waterProviders;
+      default: return mobileOperators;
+    }
+  };
+
+  const handleProcessClick = () => {
     if (!user?.has_pin) {
-      toast.error('Please setup PIN first from Profile');
+      toast.error('Pehle Profile se PIN setup karein');
       navigate('/profile');
       return;
     }
-
-    if (pin.length !== 4) {
-      toast.error('Please enter 4-digit PIN');
+    if (!rechargeNumber || !operator || !amount) {
+      toast.error('Sab details bharein');
       return;
     }
+    setRechargeDialog(false);
+    setShowPinDialog(true);
+  };
 
+  const handlePinConfirm = async (pin) => {
     setIsLoading(true);
     try {
-      // Verify PIN first
       await axios.post(
         `${API_URL}/api/auth/verify-pin`,
         { pin },
         { withCredentials: true }
       );
 
-      // Process recharge
       const { data } = await axios.post(
         `${API_URL}/api/recharge`,
         {
@@ -72,8 +88,8 @@ const Recharge = () => {
         { withCredentials: true }
       );
 
-      toast.success(`Recharge ${data.status}!`);
-      setRechargeDialog(false);
+      toast.success(`Recharge ${data.status}! Amount: Rs.${amount}`);
+      setShowPinDialog(false);
       resetForm();
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Recharge failed');
@@ -86,7 +102,7 @@ const Recharge = () => {
     setRechargeNumber('');
     setOperator('');
     setAmount('');
-    setPin('');
+    setSelectedService(null);
   };
 
   const handleNumberChange = (e) => {
@@ -130,6 +146,7 @@ const Recharge = () => {
                 if (open) {
                   setSelectedService(service);
                   resetForm();
+                  setSelectedService(service);
                 }
               }}
             >
@@ -153,11 +170,15 @@ const Recharge = () => {
                   <DialogTitle className="text-2xl" style={{ fontFamily: 'Outfit, sans-serif' }}>
                     {selectedService?.name}
                   </DialogTitle>
-                  <DialogDescription>Enter details to proceed with payment</DialogDescription>
+                  <DialogDescription>Details bharein aur Process karein</DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
                   <div className="space-y-2">
-                    <Label htmlFor="number">Number</Label>
+                    <Label htmlFor="number">
+                      {selectedService?.id === 'mobile' ? 'Mobile Number' : 
+                       selectedService?.id === 'dth' ? 'DTH Customer ID' : 
+                       'Account / Consumer Number'}
+                    </Label>
                     <Input
                       id="number"
                       type="tel"
@@ -173,13 +194,15 @@ const Recharge = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="operator">Operator</Label>
+                    <Label htmlFor="operator">
+                      {['electricity', 'gas', 'water'].includes(selectedService?.id) ? 'Provider' : 'Operator'}
+                    </Label>
                     <Select value={operator} onValueChange={setOperator}>
                       <SelectTrigger className="border-2 border-purple-600 rounded-xl h-12" data-testid="operator-select">
-                        <SelectValue placeholder="Select operator" />
+                        <SelectValue placeholder="Select" />
                       </SelectTrigger>
                       <SelectContent>
-                        {(selectedService?.id === 'mobile' ? mobileOperators : dthOperators).map((op) => (
+                        {getOperators().map((op) => (
                           <SelectItem key={op} value={op}>{op}</SelectItem>
                         ))}
                       </SelectContent>
@@ -187,7 +210,7 @@ const Recharge = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="amount">Amount (₹)</Label>
+                    <Label htmlFor="amount">Amount (Rs.)</Label>
                     <Input
                       id="amount"
                       type="number"
@@ -212,27 +235,24 @@ const Recharge = () => {
                     </Select>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label>Enter PIN</Label>
-                    <div className="flex justify-center">
-                      <InputOTP maxLength={4} value={pin} onChange={setPin} data-testid="recharge-pin-input">
-                        <InputOTPGroup>
-                          <InputOTPSlot index={0} className="w-12 h-12 text-xl border-2 border-purple-600" />
-                          <InputOTPSlot index={1} className="w-12 h-12 text-xl border-2 border-purple-600" />
-                          <InputOTPSlot index={2} className="w-12 h-12 text-xl border-2 border-purple-600" />
-                          <InputOTPSlot index={3} className="w-12 h-12 text-xl border-2 border-purple-600" />
-                        </InputOTPGroup>
-                      </InputOTP>
+                  {/* Summary */}
+                  {amount && operator && (
+                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                      <p className="text-xs text-slate-500 mb-1">Summary</p>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-slate-600">{operator} - {rechargeNumber}</span>
+                        <span className="font-bold text-slate-900">Rs.{amount}</span>
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                   <Button
-                    onClick={handleRecharge}
+                    onClick={handleProcessClick}
                     className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 rounded-xl h-12 font-semibold"
-                    disabled={isLoading || !rechargeNumber || !operator || !amount || pin.length !== 4}
-                    data-testid="submit-recharge-btn"
+                    disabled={!rechargeNumber || !operator || !amount}
+                    data-testid="process-recharge-btn"
                   >
-                    {isLoading ? 'Processing...' : `Pay ₹${amount || '0'}`}
+                    Process Rs.{amount || '0'}
                   </Button>
                 </div>
               </DialogContent>
@@ -240,6 +260,16 @@ const Recharge = () => {
           ))}
         </div>
       </div>
+
+      {/* PIN Dialog - shows after Process click */}
+      <PinDialog
+        open={showPinDialog}
+        onClose={() => setShowPinDialog(false)}
+        onConfirm={handlePinConfirm}
+        title="Confirm Payment"
+        description={`Rs.${amount} ${selectedService?.name || ''} ke liye PIN dalein`}
+        isLoading={isLoading}
+      />
     </div>
   );
 };
